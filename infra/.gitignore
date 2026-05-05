@@ -1,0 +1,18 @@
+# Local Terraform state files — may contain plaintext secrets and resource IDs
+*.tfstate
+*.tfstate.*
+
+# Terraform working directory — provider binaries, module cache (large, machine-specific)
+.terraform/
+.terraform.tfstate.lock.info
+
+# Variable values files — may contain secrets; allow only the dev environment file used by CI
+*.tfvars
+!envs/dev/dev.tfvars
+
+# Saved plan output — binary, can contain sensitive data
+tfplan
+
+# Crash logs from Terraform itself
+crash.log
+crash.*.log
