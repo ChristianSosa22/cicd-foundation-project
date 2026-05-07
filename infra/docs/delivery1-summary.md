@@ -85,7 +85,7 @@ Changes to Outputs:
 
 ---
 
-## 3. Arquitectura del pipeline de CI
+## 3. CI Pipeline Architecture
 
 El pipeline se define en `.github/workflows/terraform-ci.yml` y se activa automáticamente en cada Pull Request que apunte a la rama `main`. Está compuesto por 5 pasos en orden:
 
@@ -107,7 +107,7 @@ El pipeline fue verificado exitosamente en el siguiente PR
 
 ---
 
-## 4. Diseño de variables
+## 4. Variable Design
 
 Las variables se definen en `variables.tf` y sus valores para el ambiente de desarrollo se proveen en `envs/dev/dev.tfvars`.
 
@@ -123,7 +123,7 @@ El valor de `environment` es el que cambia entre ambientes y funciona como sufij
 
 ---
 
-## 5. Decisiones y compromisos (trade-offs)
+## 5. Decisions and Trade-Offs
 
 ### Decisión 1: Estado de Terraform local en lugar de backend remoto
 
