@@ -5,6 +5,9 @@ on:
     branches: # Workflow that runs on every pull request targeting the main branch
       - main
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true #Node.js 20 actions are deprecated. This forces all actions to use Node.js 24, which is the latest supported version.
+
 jobs:
   terraform:
     runs-on: ubuntu-latest
