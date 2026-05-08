@@ -87,23 +87,28 @@ Changes to Outputs:
 
 ## 3. CI Pipeline Architecture
 
-El pipeline se define en `.github/workflows/terraform-ci.yml` y se activa automáticamente en cada Pull Request que apunte a la rama `main`. Está compuesto por 5 pasos en orden:
+El pipeline se define en .github/workflows/terraform-ci.yml y se activa automáticamente en cada Pull Request que apunte a la rama main. Todos los pasos de Terraform corren con working-directory: ./infra, lo que evita tener que hacer cd infra manualmente en cada comando.
 
-| Paso  | Comando | Propósito |
-|-------|---------|-----------|
-| 1     | `terraform fmt --check -recursive`                | Verifica que todos los archivos `.tf` estén correctamente formateados. Si alguno necesita cambios, el paso falla y bloquea el merge. |
-| 2     | `terraform init -backend=false`                   | Descarga los plugins del proveedor AWS para que los pasos siguientes puedan funcionar. El flag `-backend=false` evita que intente conectarse a un backend remoto. |
-| 3     | `terraform validate`                              | Analiza estáticamente la configuración: verifica que los tipos de variables sean correctos, que todas las referencias existan, y que no haya errores de sintaxis. |
-| 4     | `terraform plan -var-file=envs/dev/dev.tfvars`    | Conecta con AWS y calcula exactamente qué recursos se crearían o modificarían. Este paso requiere credenciales reales y no puede fallar sin bloquear el merge. |
-| 5     | Post del plan como comentario en el PR            | Usa `actions/github-script` para publicar el output del `plan` dentro del PR como un bloque colapsable `<details>`. Es no-bloqueante (`continue-on-error: true`) porque es informativo, no funcional. |
+El pipeline está compuesto por 7 pasos en orden:
+
+| Paso | Acción / Comando | Propósito |
+|------|-----------------|-----------|
+| 1 | `actions/checkout@v4` | Descarga el código del repositorio al runner para que los pasos siguientes puedan leerlo. |
+| 2 | `hashicorp/setup-terraform@v3` con `terraform_version: "~> 1.8"` | Instala explícitamente Terraform en el runner en una versión compatible con `~> 1.8`, garantizando consistencia independientemente del entorno base de GitHub. |
+| 3 | `terraform init -backend=false` | Descarga los plugins del proveedor AWS. El flag `-backend=false` evita que intente conectarse a un backend remoto, que no existe en esta entrega. |
+| 4 | `terraform fmt --check -recursive` | Verifica que todos los archivos `.tf` estén correctamente formateados. Si alguno necesita cambios, el paso falla y bloquea el merge. |
+| 5 | `terraform validate` | Analiza estáticamente la configuración: verifica tipos de variables, referencias y sintaxis, sin conectarse a AWS. |
+| 6 | `aws-actions/configure-aws-credentials@v4` | Inyecta las credenciales de AWS al runner leyéndolas desde GitHub Secrets. Este paso habilita que el `terraform plan` del siguiente paso pueda conectarse a AWS. |
+| 7 | `terraform plan -var-file=envs/dev/dev.tfvars -no-color 2>&1 \| tee plan.txt` | Conecta con AWS y calcula qué recursos se crearían. El flag `-no-color` elimina caracteres de color para que el output sea legible como texto plano. El resultado se guarda en `plan.txt` con `tee` para que el paso siguiente pueda leerlo. Este paso **no** puede fallar sin bloquear el merge. |
+| 8 | Post del plan como comentario en el PR | Usa `actions/github-script@v7` para leer `plan.txt` y publicar su contenido en el PR dentro de un bloque colapsable `<details>`. Es no-bloqueante (`continue-on-error: true`) porque es informativo, no funcional. |
 
 ### Estrategia de credenciales
 Las credenciales de AWS (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`) se inyectan al runner exclusivamente a través de **GitHub Secrets** usando la action oficial `aws-actions/configure-aws-credentials@v4`. Nunca se escriben en el YAML del workflow ni en ningún archivo del repositorio.
 
-### PR de verificación
-El pipeline fue verificado exitosamente en el siguiente PR
+### Ejecución de verificación
+El pipeline fue verificado exitosamente en el siguiente workflow
 
-[Ver PR de prueba ]()
+[Ver ejecución de prueba ](https://github.com/ChristianSosa22/cicd-foundation-project/actions/runs/25530282629)
 
 ---
 
