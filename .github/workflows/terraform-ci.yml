@@ -1,4 +1,4 @@
-name: Terraform CI - OyD 
+name: Terraform CI - Optimizaciones y Desempeño
 
 on:
   pull_request:
