@@ -13,7 +13,7 @@ cd infra/
 terraform init
 ```
 
-> **Nota:** El pipeline de CI usa `terraform init -backend=false` porque no hay un backend remoto configurado en esta entrega. Localmente se puede correr `terraform init` normal, el estado se guardará en un archivo `terraform.tfstate` local.
+> **Nota:** El pipeline de CI usa `terraform init -backend=false` para validar sintaxis sin necesidad de credenciales. Localmente, `terraform init` configurará automáticamente el backend remoto definido en `backend.tf` (S3 + DynamoDB).
 
 Después de inicializar, se debe verificar que el formato de todos los archivos sea correcto:
 
@@ -85,3 +85,22 @@ terraform destroy -var-file=envs/dev/dev.tfvars
 ```
 
 > ⚠️ Este comando elimina todos los recursos manejados por este workspace. Se debe de utilizar con cuidado en ambientes que no sean de desarrollo.
+
+---
+
+## 4. Remote State (S3 + DynamoDB)
+
+El estado de Terraform se almacena de forma remota para permitir colaboración entre múltiples usuarios y proteger contra escrituras concurrentes. La configuración del backend está definida en `backend.tf`:
+
+- **Bucket S3:** `cicd-foundation-project` — guarda el archivo `infra/terraform.tfstate` con **versionado** y **cifrado en reposo (AES256)** habilitados.
+- **Tabla DynamoDB:** `cicd-foundation-project-lock` — implementa el mecanismo de **state locking**. Cada vez que un usuario corre `terraform plan` o `apply`, Terraform escribe un registro de lock en esta tabla; si otro usuario intenta correr una operación al mismo tiempo, recibirá un error y deberá esperar.
+
+Los recursos del backend (bucket + tabla) se provisionan una sola vez desde el subdirectorio `bootstrap/`, que mantiene su propio estado local fuera del backend remoto para evitar el problema del "huevo y la gallina".
+
+### Evidencia de state lock contention
+
+La siguiente captura muestra dos sesiones de `terraform apply` ejecutándose en paralelo sobre el mismo workspace. La sesión de la izquierda adquirió el lock primero y está pidiendo el valor de `project_name`; la sesión de la derecha intentó adquirir el mismo lock y DynamoDB rechazó la operación con `ConditionalCheckFailedException`, mostrando el ID del lock activo, la ruta del state, el usuario y el timestamp de creación:
+
+![Terraform state lock contention en DynamoDB](evidence/state-lock-contention.png)
+
+Este comportamiento confirma que el remote state está protegiendo el archivo contra modificaciones concurrentes, evitando corrupción del estado.
