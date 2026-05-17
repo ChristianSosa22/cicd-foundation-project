@@ -105,10 +105,10 @@ El pipeline está compuesto por 7 pasos en orden:
 ### Estrategia de credenciales
 Las credenciales de AWS (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`) se inyectan al runner exclusivamente a través de **GitHub Secrets** usando la action oficial `aws-actions/configure-aws-credentials@v4`. Nunca se escriben en el YAML del workflow ni en ningún archivo del repositorio.
 
-### Ejecución de verificación
-El pipeline fue verificado exitosamente en el siguiente workflow
+### PR de verificación
+El pipeline fue verificado exitosamente en el siguiente enlace
 
-[Ver ejecución de prueba ](https://github.com/ChristianSosa22/cicd-foundation-project/actions/runs/25530282629)
+[Ver ejecución de prueba ](https://github.com/ChristianSosa22/cicd-foundation-project/pull/2)
 
 ---
 
