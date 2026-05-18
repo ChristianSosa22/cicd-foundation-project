@@ -1,6 +1,44 @@
 
 ## 1. Compute target and rationale
+Se eligió **AWS Lambda** como recurso de compute para esta entrega. Lambda es una función serverless que ejecuta código sin necesidad de aprovisionar ni administrar servidores.
+
+Se eligió sobre las otras opciones disponibles (EC2 y ECS Fargate) por las siguientes razones:
+- No requiere configuración de red (VPC, subnets, security groups) para existir, lo que reduce la complejidad del módulo.
+- Es el recurso de compute más simple de provisionar con Terraform en AWS.
+- Tiene un free tier generoso (1 millón de invocaciones gratuitas al mes), por lo que el costo para esta entrega es prácticamente cero.
+
+**Trade-off considerado:** Lambda tiene un límite de 15 minutos de ejecución por invocación y no es adecuado para procesos de larga duración. Si el proyecto requiriera procesamiento continuo o de larga duración, ECS Fargate sería una mejor opción. Para esta entrega, Lambda es suficiente porque el objetivo es demostrar el aprovisionamiento del recurso, no ejecutar lógica de negocio real.
+
 ## 2. Module design
+Se crearon tres módulos reutilizables en `infra/modules/`:
+
+### Módulo Compute 
+
+Ubicación: `infra/modules/compute/`
+
+- **Inputs:** `environment` (string), `name` (string), `memory_size` (number, default 128). Todas con `description` y `type`.
+- **Outputs:** `function_arn` y `function_name`.
+- **Recursos internos:** IAM execution role, IAM policy con permisos mínimos (solo logs en CloudWatch), y la función Lambda.
+- **Decisión de diseño:** Se separó la policy del role en un recurso `aws_iam_role_policy` independiente en lugar de usar `managed_policy_arns`. Esto permite definir permisos específicos al nombre de la función usando interpolación de variables, evitando wildcards en el `Resource` de la policy.
+
+### Módulo Storage 
+
+Ubicación: `infra/modules/storage/`
+
+- **Inputs:** `environment` (string), `bucket_name` (string). Ambas con `description` y `type`.
+- **Outputs:** `bucket_arn` y `bucket_name`.
+- **Recursos internos:** bucket S3, versioning, SSE AES256, lifecycle rule con prefix `uploads/` que transiciona objetos a `STANDARD_IA` a los 30 días, public access block, y bucket policy que fuerza HTTPS mediante `aws:SecureTransport`.
+- **Decisión de diseño:** El lifecycle rule se definió con `prefix = "uploads/"` en lugar de aplicarlo al bucket completo. Esto cumple el requisito de la especificación de tener un scope específico y evita mover objetos del sistema a almacenamiento de acceso infrecuente prematuramente.
+
+### Módulo Database 
+
+
+
+
+### Root Module Wiring
+
+El `infra/main.tf` llama a los tres módulos pasando variables del root como inputs. Los outputs de los módulos se exponen en `infra/outputs.tf`, cumpliendo el requisito de que al menos un output de módulo sea referenciado en el root module.
+
 ## 3. Remote State Migration
 
 En la entrega 1 el estado de Terraform se mantenía como archivo local (`terraform.tfstate` en `infra/`). En esta entrega se migró el estado a un **backend remoto** sobre AWS, usando **S3** para almacenamiento y **DynamoDB** para state locking.
