@@ -1,8 +1,12 @@
-resource "aws_s3_bucket" "this" {
-  bucket = "${var.bucket_name_prefix}-${var.environment}"
+module "compute" {
+  source      = "./modules/compute"
+  environment = var.environment
+  name        = var.project_name
+  memory_size = 128
+}
 
-  tags = {
-    Project     = var.project_name
-    Environment = var.environment
-  }
+module "storage" {
+  source      = "./modules/storage"
+  environment = var.environment
+  bucket_name = var.bucket_name_prefix
 }

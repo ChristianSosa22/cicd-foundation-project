@@ -88,7 +88,9 @@ terraform destroy -var-file=envs/dev/dev.tfvars
 
 ---
 
-## 4. Remote State (S3 + DynamoDB)
+## Evidence
+
+### Remote State (S3 + DynamoDB)
 
 El estado de Terraform se almacena de forma remota para permitir colaboración entre múltiples usuarios y proteger contra escrituras concurrentes. La configuración del backend está definida en `backend.tf`:
 
@@ -97,10 +99,25 @@ El estado de Terraform se almacena de forma remota para permitir colaboración e
 
 Los recursos del backend (bucket + tabla) se provisionan una sola vez desde el subdirectorio `bootstrap/`, que mantiene su propio estado local fuera del backend remoto para evitar el problema del "huevo y la gallina".
 
-### Evidencia de state lock contention
+#### Evidencia de state lock contention
 
 La siguiente captura muestra dos sesiones de `terraform apply` ejecutándose en paralelo sobre el mismo workspace. La sesión de la izquierda adquirió el lock primero y está pidiendo el valor de `project_name`; la sesión de la derecha intentó adquirir el mismo lock y DynamoDB rechazó la operación con `ConditionalCheckFailedException`, mostrando el ID del lock activo, la ruta del state, el usuario y el timestamp de creación:
 
 ![Terraform state lock contention en DynamoDB](evidence/state-lock-contention.png)
 
 Este comportamiento confirma que el remote state está protegiendo el archivo contra modificaciones concurrentes, evitando corrupción del estado.
+
+### Compute: Lambda Deployed
+
+El siguiente output confirma que la función Lambda `oyd-project-dev` fue aprovisionada exitosamente en AWS y se encuentra en estado `Active`. La función fue creada mediante el módulo `infra/modules/compute/` en la región `us-east-1`:
+
+![Compute Lambda deployed](evidence/compute-deployed.png)
+
+El output del comando CLI utilizado para verificar el despliegue fue guardado en `evidence/compute-deployed.txt`:
+
+```json
+{
+    "FunctionArn": "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev",
+    "State": "Active"
+}
+```
