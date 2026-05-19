@@ -32,7 +32,12 @@ Ubicación: `infra/modules/storage/`
 
 ### Módulo Database 
 
+Ubicación: `infra/modules/database/`
 
+- **Inputs:** `environment` (string), `project_name` (string), `db_name` (string), `db_username` (string), `db_password` (string, sensitive), `db_port` (number, default 5432), `db_instance_class` (string, default `db.t3.micro`), `db_allocated_storage` (number, default 20), `db_engine_version` (string, default `16.0`), `multi_az` (bool, default false).
+- **Outputs:** `db_instance_arn`, `db_endpoint`, `db_security_group_id`.
+- **Recursos internos:** data sources del VPC por defecto y subnets, security groups para app y DB, subnet group, y una instancia RDS Postgres 16.x con `storage_encrypted = true`.
+- **Decisión de diseño:** Se usa el VPC por defecto y sus subnets para evitar crear una VPC dedicada en esta entrega, pero se restringe el acceso al puerto de la base de datos usando reglas SG a SG (solo desde el security group de la app).
 
 
 ### Root Module Wiring
@@ -135,4 +140,12 @@ Esta evidencia confirma que el backend remoto está protegiendo el state contra 
 
 ## 4. Database security
 
+La credencial de la base de datos se define como variable `db_password` marcada como **sensitive** y no se escribe en ningun archivo commiteado. En local, el valor se pasa por variable de entorno (`TF_VAR_db_password`) o por `-var`, y en CI se inyecta desde GitHub Secrets. Esto evita que el password quede en `.tf`, `.tfvars` o logs.
+
+La instancia RDS esta cifrada en reposo con `storage_encrypted = true`. El acceso de red se restringe con un **security group** exclusivo para la DB, que solo permite ingreso al puerto configurado (`db_port`) desde el **security group de la aplicacion**. No se permite `0.0.0.0/0` en ingreso. La DB vive en un **subnet group** compuesto por las subnets del VPC por defecto, lo que mantiene la base en red privada sin exponerla directamente a internet.
+
 ## 5. Two architectural trade-offs
+
+**Trade-off 1: instancia economica y single-AZ vs. alta disponibilidad.** Se eligio `db.t3.micro` y `multi_az = false` para reducir costos en un MVP. El costo es menor y el aprovisionamiento es mas rapido, pero se sacrifica tolerancia a fallos y tiempo de recuperacion ante una caida de zona. Para un ambiente productivo, se recomendaria habilitar `multi_az` y evaluar clases de instancia mas robustas.
+
+**Trade-off 2: VPC por defecto vs. red dedicada.** Usar el VPC por defecto acelera la entrega y evita agregar mas infraestructura en esta fase. La desventaja es que se pierde control fino sobre subnets, routing y segmentacion avanzada. En una siguiente fase, el proyecto podria mover la DB a una VPC dedicada con subnets privadas y reglas de red mas estrictas para mejorar aislamiento y gobernanza.
