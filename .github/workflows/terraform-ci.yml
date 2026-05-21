@@ -8,8 +8,7 @@ on:
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true #Node.js 20 actions are deprecated. This forces all actions to use Node.js 24, which is the latest supported version.
   # Uncomment the following line to pass the database password securely
-  # env:
-  #   TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+  TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
 jobs:
   terraform:
