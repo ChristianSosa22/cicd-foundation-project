@@ -1,11 +1,16 @@
-output "compute_function_arn" {
-  description = "ARN of the Lambda function provisioned by the compute module."
-  value       = module.compute.function_arn
+output "compute_cluster_arn" {
+  description = "ARN of the ECS cluster provisioned by the compute module."
+  value       = module.compute.cluster_arn
 }
 
-output "compute_function_name" {
-  description = "Name of the Lambda function provisioned by the compute module."
-  value       = module.compute.function_name
+output "compute_cluster_name" {
+  description = "Name of the ECS cluster provisioned by the compute module."
+  value       = module.compute.cluster_name
+}
+
+output "compute_task_definition_arn" {
+  description = "ARN of the ECS task definition provisioned by the compute module."
+  value       = module.compute.task_definition_arn
 }
 
 output "storage_bucket_name" {
