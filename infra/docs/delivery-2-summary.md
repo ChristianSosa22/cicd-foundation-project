@@ -1,13 +1,13 @@
-
 ## 1. Compute target and rationale
-Se eligió **AWS Lambda** como recurso de compute para esta entrega. Lambda es una función serverless que ejecuta código sin necesidad de aprovisionar ni administrar servidores.
 
-Se eligió sobre las otras opciones disponibles (EC2 y ECS Fargate) por las siguientes razones:
-- No requiere configuración de red (VPC, subnets, security groups) para existir, lo que reduce la complejidad del módulo.
-- Es el recurso de compute más simple de provisionar con Terraform en AWS.
-- Tiene un free tier generoso (1 millón de invocaciones gratuitas al mes), por lo que el costo para esta entrega es prácticamente cero.
+Se eligió **AWS ECS Fargate** como recurso de compute para esta entrega. Fargate es una modalidad serverless de contenedores — corre contenedores Docker sin necesidad de aprovisionar ni administrar servidores.
 
-**Trade-off considerado:** Lambda tiene un límite de 15 minutos de ejecución por invocación y no es adecuado para procesos de larga duración. Si el proyecto requiriera procesamiento continuo o de larga duración, ECS Fargate sería una mejor opción. Para esta entrega, Lambda es suficiente porque el objetivo es demostrar el aprovisionamiento del recurso, no ejecutar lógica de negocio real.
+Se eligió sobre Lambda y EC2 por las siguientes razones:
+- El proyecto es un sistema de reservas de parqueos con un backend que expone múltiples endpoints HTTP que necesitan estar corriendo continuamente. Lambda tiene un límite de 15 minutos de ejecución y no está diseñado para APIs persistentes.
+- A diferencia de EC2, Fargate no requiere administrar el servidor subyacente — AWS gestiona el sistema operativo, parches y escalado de la infraestructura.
+- Es la opción más adecuada para correr un backend de API REST de forma confiable y escalable en AWS sin overhead operativo.
+
+**Trade-off considerado:** Fargate tiene un costo mayor que Lambda para cargas de trabajo intermitentes, ya que el contenedor puede estar corriendo aunque no haya tráfico. Para el sistema de reservas de parqueos, donde el backend necesita responder en tiempo real a consultas de disponibilidad y reservas, la disponibilidad continua justifica el costo adicional sobre Lambda.
 
 ## 2. Module design
 Se crearon tres módulos reutilizables en `infra/modules/`:
@@ -16,10 +16,10 @@ Se crearon tres módulos reutilizables en `infra/modules/`:
 
 Ubicación: `infra/modules/compute/`
 
-- **Inputs:** `environment` (string), `name` (string), `memory_size` (number, default 128). Todas con `description` y `type`.
-- **Outputs:** `function_arn` y `function_name`.
-- **Recursos internos:** IAM execution role, IAM policy con permisos mínimos (solo logs en CloudWatch), y la función Lambda.
-- **Decisión de diseño:** Se separó la policy del role en un recurso `aws_iam_role_policy` independiente en lugar de usar `managed_policy_arns`. Esto permite definir permisos específicos al nombre de la función usando interpolación de variables, evitando wildcards en el `Resource` de la policy.
+- **Inputs:** `environment` (string), `name` (string), `cpu` (number, default 256), `memory` (number, default 512). Todas con `description` y `type`.
+- **Outputs:** `cluster_arn`, `cluster_name` y `task_definition_arn`.
+- **Recursos internos:** ECS cluster, IAM execution role con permisos mínimos (solo logs en CloudWatch), IAM policy, y ECS task definition configurada para Fargate con imagen `nginx:stable` como placeholder.
+- **Decisión de diseño:** Se usó `network_mode = "awsvpc"` en la task definition, que es el único modo de red compatible con Fargate. Esto le da al contenedor su propia interfaz de red y dirección IP, lo que mejora el aislamiento de red respecto a otros contenedores en el mismo cluster.
 
 ### Módulo Storage 
 

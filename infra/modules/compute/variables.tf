@@ -4,12 +4,18 @@ variable "environment" {
 }
 
 variable "name" {
-  description = "Name for the Lambda function."
+  description = "Name for the ECS service and related resources."
   type        = string
 }
 
-variable "memory_size" {
-  description = "Amount of memory in MB allocated to the Lambda function. Valid values: 128 to 10240."
+variable "cpu" {
+  description = "Number of CPU units for the Fargate task. Valid values: 256, 512, 1024, 2048, 4096."
   type        = number
-  default     = 128
+  default     = 256
+}
+
+variable "memory" {
+  description = "Amount of memory in MB for the Fargate task. Must be compatible with the cpu value."
+  type        = number
+  default     = 512
 }

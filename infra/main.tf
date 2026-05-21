@@ -2,7 +2,8 @@ module "compute" {
   source      = "./modules/compute"
   environment = var.environment
   name        = var.project_name
-  memory_size = 128
+  cpu         = 256
+  memory      = 512
 }
 
 module "storage" {

@@ -107,17 +107,18 @@ La siguiente captura muestra dos sesiones de `terraform apply` ejecutándose en 
 
 Este comportamiento confirma que el remote state está protegiendo el archivo contra modificaciones concurrentes, evitando corrupción del estado.
 
-### Compute: Lambda Deployed
+### Compute: ECS Fargate Deployed
 
-El siguiente output confirma que la función Lambda `oyd-project-dev` fue aprovisionada exitosamente en AWS y se encuentra en estado `Active`. La función fue creada mediante el módulo `infra/modules/compute/` en la región `us-east-1`:
+El siguiente output confirma que el cluster ECS Fargate `oyd-project-dev-cluster` fue aprovisionado exitosamente en AWS. El cluster fue creado mediante el módulo `infra/modules/compute/` en la región `us-east-1`:
 
-![Compute Lambda deployed](evidence/compute-deployed.png)
+![Compute ECS Fargate deployed](evidence/compute-deployed.png)
 
 El output del comando CLI utilizado para verificar el despliegue fue guardado en `evidence/compute-deployed.txt`:
 
 ```json
 {
-    "FunctionArn": "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev",
-    "State": "Active"
+    "ClusterName": "oyd-project-dev-cluster",
+    "Status": "ACTIVE",
+    "ActiveServicesCount": 0
 }
 ```
