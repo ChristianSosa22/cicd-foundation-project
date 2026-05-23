@@ -25,3 +25,13 @@ variable "region" {
   type        = string
   default     = "us-east-1"
 }
+
+variable "vpc_id" {
+  description = "ID of the VPC in which the ECS tasks security group is created."
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs where the Fargate tasks are placed."
+  type        = list(string)
+}

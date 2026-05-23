@@ -48,6 +48,26 @@ resource "aws_iam_role_policy" "ecs_logs" {
   })
 }
 
+# Security Group: SG de las tareas Fargate. Sin ingress (acceso saliente),
+# pero con egress abierto para alcanzar RDS, ECR y CloudWatch Logs.
+resource "aws_security_group" "ecs_tasks" {
+  name        = "${var.name}-${var.environment}-ecs-tasks-sg"
+  description = "ECS tasks security group for ${var.name} in ${var.environment}"
+  vpc_id      = var.vpc_id
+
+  egress {
+    description = "Allow all outbound (DB, ECR pull, CloudWatch Logs)"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
 # Task Definition: Describe el contenedor: imagen, CPU, memoria y logs
 resource "aws_ecs_task_definition" "this" {
   family                   = "${var.name}-${var.environment}"
@@ -79,6 +99,26 @@ resource "aws_ecs_task_definition" "this" {
       }
     }
   ])
+
+  tags = {
+    Environment = var.environment
+  }
+}
+
+# ECS Service: ejecuta la task en Fargate y le adjunta el security group de
+# las tareas (awsvpc), que es lo que permite la conectividad de red con RDS.
+resource "aws_ecs_service" "this" {
+  name            = "${var.name}-${var.environment}-svc"
+  cluster         = aws_ecs_cluster.this.id
+  task_definition = aws_ecs_task_definition.this.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+
+  network_configuration {
+    subnets          = var.subnet_ids
+    security_groups  = [aws_security_group.ecs_tasks.id]
+    assign_public_ip = true
+  }
 
   tags = {
     Environment = var.environment

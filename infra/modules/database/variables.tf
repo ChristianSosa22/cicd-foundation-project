@@ -59,3 +59,19 @@ variable "db_max_connections" {
   type        = string
   default     = "100"
 }
+
+variable "vpc_id" {
+  description = "ID of the VPC in which the DB security group and subnet group are created."
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs used for the RDS DB subnet group."
+  type        = list(string)
+}
+
+variable "ingress_security_group_ids" {
+  description = "Security group IDs allowed to connect to the database on db_port (e.g. the ECS tasks SG)."
+  type        = list(string)
+  default     = []
+}
