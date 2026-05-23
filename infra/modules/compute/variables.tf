@@ -19,3 +19,9 @@ variable "memory" {
   type        = number
   default     = 512
 }
+
+variable "region" {
+  description = "AWS region for the resources. Used for log configuration."
+  type        = string
+  default     = "us-east-1"
+}

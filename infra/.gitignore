@@ -5,6 +5,7 @@
 # Terraform working directory — provider binaries, module cache (large, machine-specific)
 .terraform/
 .terraform.tfstate.lock.info
+.terraform.lock.hcl
 
 # Variable values files — may contain secrets; allow only the dev environment file used by CI
 *.tfvars

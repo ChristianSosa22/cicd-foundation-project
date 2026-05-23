@@ -4,6 +4,7 @@ module "compute" {
   name        = var.project_name
   cpu         = 256
   memory      = 512
+  region      = var.region
 }
 
 module "storage" {

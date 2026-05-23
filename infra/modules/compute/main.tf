@@ -72,7 +72,7 @@ resource "aws_ecs_task_definition" "this" {
         logDriver = "awslogs"
         options = {
           "awslogs-group"         = "/ecs/${var.name}-${var.environment}"
-          "awslogs-region"        = "us-east-1"
+          "awslogs-region"        = var.region
           "awslogs-stream-prefix" = "ecs"
           "awslogs-create-group"  = "true"
         }
