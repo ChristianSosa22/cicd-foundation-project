@@ -1,37 +1,14 @@
 # Main configuration for RDS Postgres 16.x
-data "aws_vpc" "default" {
-  default = true
-}
-
-data "aws_subnets" "default" {
-  filter {
-    name   = "vpc-id"
-    values = [data.aws_vpc.default.id]
-  }
-}
-
-resource "aws_security_group" "app_sg" {
-  name        = "${var.project_name}-${var.environment}-app-sg"
-  description = "App security group for ${var.project_name} in ${var.environment}"
-  vpc_id      = data.aws_vpc.default.id
-
-  tags = {
-    Name        = "${var.project_name}-${var.environment}-app-sg"
-    Environment = var.environment
-    Project     = var.project_name
-  }
-}
-
 resource "aws_security_group" "db_sg" {
   name        = "${var.project_name}-${var.environment}-db-sg"
   description = "DB security group for ${var.project_name} in ${var.environment}"
-  vpc_id      = data.aws_vpc.default.id
+  vpc_id      = var.vpc_id
 
   ingress {
     from_port       = var.db_port
     to_port         = var.db_port
     protocol        = "tcp"
-    security_groups = [aws_security_group.app_sg.id]
+    security_groups = var.ingress_security_group_ids
   }
 
   egress {
@@ -50,7 +27,7 @@ resource "aws_security_group" "db_sg" {
 
 resource "aws_db_subnet_group" "default" {
   name       = "${var.project_name}-${var.environment}-db-subnet-group"
-  subnet_ids = data.aws_subnets.default.ids
+  subnet_ids = var.subnet_ids
 
   tags = {
     Name        = "${var.project_name}-${var.environment}-db-subnet-group"
