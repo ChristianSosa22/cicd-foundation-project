@@ -19,6 +19,9 @@ const EnvSchema = z.object({
   ENCRYPTION_KEY: z.string().optional(), // base64 of 32 bytes
   ENCRYPTION_KEY_SECRET_ID: z.string().optional(),
   HMAC_KEY: z.string().optional(),
+
+  // Bcrypt cost factor — lower in tests for speed (default 12).
+  BCRYPT_ROUNDS: z.coerce.number().int().min(4).max(14).default(12),
 });
 
 export type Env = z.infer<typeof EnvSchema>;

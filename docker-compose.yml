@@ -15,6 +15,7 @@ services:
       POSTGRES_DB: parking
     ports:
       - "5432:5432"          # exposed so you can also connect with psql/DBeaver from the host
+      - "5433:5432"          # alternate port for tests when local Postgres occupies 5432
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
@@ -36,6 +37,11 @@ services:
       JWT_SECRET: local-dev-secret-change-me-please
       JWT_EXPIRES_IN: 8h
       AWS_REGION: us-east-1
+      # Column-level encryption keys for local dev — NOT for production.
+      # ENCRYPTION_KEY = base64 of 32 bytes (AES-256-GCM).
+      # "test-encryption-key-for-testing!" (32 chars) in base64:
+      ENCRYPTION_KEY: dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItdGVzdGluZyE=
+      HMAC_KEY: local-dev-hmac-key-change-in-production
     ports:
       - "8080:8080"
     depends_on:
