@@ -34,9 +34,40 @@ export default function LoginPage() {
         onSubmit={onSubmit}
         className="w-full max-w-sm space-y-5 rounded-2xl bg-white p-8 shadow-lg ring-1 ring-slate-200"
       >
-        <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Iniciar sesión</h1>
-          <p className="text-sm text-slate-500">Sistema de reserva de parqueos</p>
+        {/* Logo */}
+        <div className="flex flex-col items-center gap-3 pb-2">
+          <div className="relative flex h-14 w-14 items-center justify-center">
+            <svg viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg" className="h-14 w-14">
+              {/* Hexagon background */}
+              <path
+                d="M28 3 L51 16 L51 40 L28 53 L5 40 L5 16 Z"
+                fill="#0f172a"
+              />
+              {/* Letter P */}
+              <text
+                x="28"
+                y="37"
+                textAnchor="middle"
+                fill="white"
+                fontSize="26"
+                fontWeight="700"
+                fontFamily="ui-sans-serif, system-ui, sans-serif"
+                letterSpacing="-1"
+              >
+                P
+              </text>
+              {/* Accent dot */}
+              <circle cx="37" cy="17" r="4" fill="#3b82f6" />
+            </svg>
+          </div>
+          <div className="text-center">
+            <h1 className="text-xl font-bold tracking-tight text-slate-900">
+              Reserva de Parqueos
+            </h1>
+            <p className="mt-0.5 text-sm text-slate-500">
+              Ingresa a tu cuenta para continuar
+            </p>
+          </div>
         </div>
 
         <label className="block space-y-1">
