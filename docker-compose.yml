@@ -1,0 +1,58 @@
+# Local dev stack: Postgres 16 + backend API.
+# Usage:  docker compose up --build      (Ctrl+C to stop; add -d to detach)
+#         docker compose down            (stop)   |   down -v  (also wipe the DB)
+#
+# The schema in backend/sql/schema.sql is applied automatically the FIRST time
+# the db volume is created. If you change the schema, recreate the DB with:
+#   docker compose down -v && docker compose up --build
+
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: parking
+    ports:
+      - "5432:5432"          # exposed so you can also connect with psql/DBeaver from the host
+      - "5433:5432"          # alternate port for tests when local Postgres occupies 5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/sql/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d parking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./backend
+    environment:
+      NODE_ENV: production
+      PORT: 8080
+      # 'db' is the service name above — Docker's internal DNS resolves it.
+      DATABASE_URL: postgres://postgres:postgres@db:5432/parking
+      # Local-only secret (>=16 chars). NOT for production — there it comes from Secrets Manager.
+      JWT_SECRET: local-dev-secret-change-me-please
+      JWT_EXPIRES_IN: 8h
+      AWS_REGION: us-east-1
+      # Column-level encryption keys for local dev — NOT for production.
+      # ENCRYPTION_KEY = base64 of 32 bytes (AES-256-GCM).
+      # "test-encryption-key-for-testing!" (32 chars) in base64:
+      ENCRYPTION_KEY: dGVzdC1lbmNyeXB0aW9uLWtleS1mb3ItdGVzdGluZyE=
+      HMAC_KEY: local-dev-hmac-key-change-in-production
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy   # wait until Postgres is actually accepting connections
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:8080/health',r=>process.exit(r.statusCode===200?0:1)).on('error',()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+volumes:
+  pgdata:

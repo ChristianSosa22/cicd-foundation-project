@@ -129,9 +129,9 @@ Preguntas abiertas
 
 Anexos 
 Anexo A: Mockups
-Pantalla 1 - Registro e inicio de sesión: Esta pantalla cubre el acceso al sistema. Se presentan dos vistas: el formulario de inicio de sesión para usuarios existentes y el formulario de registro para nuevos usuarios.
+Pantalla 1 - inicio de sesión: Esta pantalla cubre el acceso al sistema. Se presentan dos vistas: el formulario de inicio de sesión para usuarios existentes ya que estos son brindados por el administrador a sus colaboradores. Lo que si se solicita la primera vez que se accede es que registren su placa del automovil que conducen, el cual pueden cambiar luego.
 
-Pantalla 2 - Consulta de disponibilidad en tiempo real: Esta pantalla permite al conductor visualizar el estado actual de los espacios de parqueo. Se presenta una cuadrícula con cada espacio identificado por número, mostrando su estado mediante código de color: verde (Disponible), rojo (Ocupado) y amarillo (Reservado). El conductor puede filtrar por tipo de vehículo (moto/carro) antes de proceder a reservar.
+Pantalla 2 - Consulta de disponibilidad en tiempo real: Esta pantalla permite al conductor visualizar el estado actual de los espacios de parqueo. Se presenta una cuadrícula con cada espacio identificado por número, mostrando su estado mediante código de color: verde (Disponible), rojo (Ocupado) y amarillo (Reservado). El conductor puede filtrar por tipo de vehículo (moto/carro) antes de proceder a reservar. (solo puede ver los parqueos a los cuales tiene acceso por su rol.)
 
 Pantalla 3 - Flujo de reserva: Guía al conductor a través del proceso de reserva de un espacio seleccionado. Se muestran los detalles del espacio elegido, los datos del vehículo registrado y la hora estimada de llegada. El sistema valida la disponibilidad de forma atómica al momento de confirmar, previniendo el double-booking. Al completarse, se genera el comprobante QR.
 
@@ -147,22 +147,6 @@ Pantalla 6 - Gestión de precios por tipo de vehículo: Esta pantalla permite al
 Pantalla 7- Historial de reservas por usuario y fecha: Esta pantalla permite al administrador consultar y auditar el registro completo de reservas del sistema. La tabla es filtrable por usuario y rango de fechas, mostrando para cada entrada el espacio asignado, tipo de vehículo, estado final y marca de tiempo. Los registros son inmutables; ningún rol puede eliminarlos.
 
 
-Anexo B — Uso de IA
-Lo que le pedimos a la IA:
-"Actúa como un Arquitecto de Soluciones Cloud. Tengo un sistema de reserva de parqueos en Guatemala para un proyecto. Ayúdame a:
-Redactar el cierre del Resumen Ejecutivo enfocándose en qué procesos se van a automatizar (evitar double-booking, liberación de espacios).
-Generar ejemplos específicos para una tabla que mapee las funcionalidades del sistema con los 7 componentes obligatorios del curso (Cómputo, DB, Almacenamiento, Red, Asíncrono, Seguridad, Observabilidad).
-Asegúrate de que los ejemplos no sean genéricos (no digas solo 'hacer login') sino que mencionen procesos reales de un parqueo inteligente."
-Nuestra reflexión:
-Qué aceptamos: La estructura de la tabla y los ejemplos de procesos asíncronos, ya que es un "trade-off" interesante para el negocio.
-Qué editamos: Editamos ejemplos de procesos asíncronos, seguridad, red, observabilidad, Almacenamiento de archivos.
-Qué descartamos: Sugerencias de la IA sobre algunas funciones de red, como aislamiento de la base de datos y la lógica de negocio.
-Prompts utilizados:
-"Actúa como Product Owner y genera una lista de Scope In/Out para un sistema de parqueos inteligente enfocado en un curso de Infraestructura Cloud, priorizando funcionalidades que usen bases de datos y colas de mensajes."
-Reflexión del equipo:
-Qué aceptamos: La estructura de "In/Out" sugerida por la IA, especialmente la idea de dejar fuera la integración física (sensores) y el desarrollo para una app móvil para no complicar el alcance técnico del curso.
-Qué editamos: Todas las sugerencias, ajustándose a un desarrollo más práctico y sencillo.
-Qué descartamos: La IA sugirió incluir "Machine Learning para predicción de demanda"; lo movimos a Out-of-Scope inmediatamente para mantener el proyecto ejecutable en 3 meses.
 
 
 
