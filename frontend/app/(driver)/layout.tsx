@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
+import { RouteGuard } from '@/components/RouteGuard';
 
 export default function DriverLayout({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
@@ -41,12 +42,21 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               <Link href="/reservations" className={navClass('/reservations')}>
                 Mis Reservas
               </Link>
+              <Link href="/vehicles" className={navClass('/vehicles')}>
+                Mis Vehículos
+              </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             {user && (
               <span className="hidden text-sm text-slate-500 sm:block">{user.full_name}</span>
             )}
+            <Link
+              href="/change-password"
+              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+            >
+              Contraseña
+            </Link>
             <button
               onClick={handleLogout}
               className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
@@ -56,7 +66,7 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
           </div>
         </div>
       </header>
-      {children}
+      <RouteGuard requiredRole="driver">{children}</RouteGuard>
     </div>
   );
 }
