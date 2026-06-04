@@ -126,7 +126,9 @@ function ActiveCard({
                 <span className="text-xs capitalize text-slate-400">{detail.vehicle.vehicle_type}</span>
               )}
             </div>
-            <p className="text-sm text-slate-500">{reservation.reservation_date}</p>
+            <p className="text-sm text-slate-500">
+              {new Date(reservation.reservation_date + 'T00:00:00').toLocaleDateString('es-GT')}
+            </p>
             <span
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                 STATUS_BADGE[reservation.status] ?? 'bg-slate-100 text-slate-600'
@@ -292,7 +294,9 @@ export default function ReservationsPage() {
               <tbody>
                 {history.map((r) => (
                   <tr key={r.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3 tabular-nums">{r.reservation_date}</td>
+                    <td className="px-4 py-3 tabular-nums">
+                      {new Date(r.reservation_date + 'T00:00:00').toLocaleDateString('es-GT')}
+                    </td>
                     <td className="px-4 py-3">
                       <span
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${

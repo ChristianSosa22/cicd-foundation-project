@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth';
 
 interface OccupancyRow {
   estado: string;
-  tipo_vehiculo: string;
+  vehicle_type: string;
   count: number;
 }
 
@@ -45,7 +45,7 @@ export default function DashboardPage() {
   }, [fetchOccupancy]);
 
   function getCount(estado: string, tipo: string) {
-    return rows.find((r) => r.estado === estado && r.tipo_vehiculo === tipo)?.count ?? 0;
+    return rows.find((r) => r.estado === estado && r.vehicle_type === tipo)?.count ?? 0;
   }
 
   function totalByEstado(estado: string) {
