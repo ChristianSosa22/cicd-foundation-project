@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { apiFetch, type ApiError } from '@/lib/api';
+import { createVehicle } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { extractError } from '@/lib/errors';
 
 type VehicleType = 'auto' | 'moto' | 'camioneta';
 
@@ -17,16 +18,14 @@ export default function OnboardingPage() {
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
+    if (!token) return;
     setError(null);
     setLoading(true);
     try {
-      await apiFetch('/me/vehicles', {
-        method: 'POST',
-        body: JSON.stringify({ plate, vehicle_type: vehicleType }),
-      }, token ?? undefined);
-      router.push('/availability');
+      await createVehicle(token, plate.trim().toUpperCase(), vehicleType);
+      router.push('/vehicles');
     } catch (err) {
-      setError((err as ApiError)?.error ?? 'Error al registrar vehículo');
+      setError(extractError(err));
     } finally {
       setLoading(false);
     }

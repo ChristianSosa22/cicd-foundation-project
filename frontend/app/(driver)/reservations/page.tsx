@@ -1,196 +1,244 @@
 'use client';
 
+import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { apiFetch, type ApiError } from '@/lib/api';
+import {
+  getReservation,
+  getReceiptUrl,
+  myReservations,
+  reservationAction,
+  type ApiError,
+  type MeReservation,
+  type Reservation,
+} from '@/lib/api';
 import { useAuth } from '@/lib/auth';
+import { extractError } from '@/lib/errors';
 
-interface Reservation {
-  id: number;
-  parking_space: { code: string; tipo_vehiculo: string };
-  vehicle: { plate: string; vehicle_type: string };
-  date: string;
-  estado: string;
-}
+const TERMINAL = new Set<string>(['liberada', 'cancelada', 'expirada']);
 
-const ACTIVE_STATES = new Set(['reservada', 'ocupada', 'Reservado', 'Confirmado']);
-function isActive(r: Reservation) {
-  return ACTIVE_STATES.has(r.estado);
-}
-
-const BADGE: Record<string, string> = {
+const STATUS_BADGE: Record<string, string> = {
   reservada: 'bg-amber-100 text-amber-700',
-  Reservado: 'bg-amber-100 text-amber-700',
   ocupada: 'bg-blue-100 text-blue-700',
-  Confirmado: 'bg-blue-100 text-blue-700',
+  liberada: 'bg-emerald-100 text-emerald-700',
   cancelada: 'bg-red-100 text-red-600',
-  Cancelado: 'bg-red-100 text-red-600',
-  liberada: 'bg-slate-100 text-slate-500',
   expirada: 'bg-slate-100 text-slate-500',
 };
+
+const STATUS_LABELS: Record<string, string> = {
+  reservada: 'Reservada',
+  ocupada: 'Ocupada',
+  liberada: 'Liberada',
+  cancelada: 'Cancelada',
+  expirada: 'Expirada',
+};
+
+function useCountdown(deadline: string | null): string | null {
+  const [remaining, setRemaining] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!deadline) return;
+    const tick = () => {
+      const diff = new Date(deadline).getTime() - Date.now();
+      if (diff <= 0) {
+        setRemaining('Expirado');
+        return;
+      }
+      const m = Math.floor(diff / 60_000);
+      const s = Math.floor((diff % 60_000) / 1_000);
+      setRemaining(`${m}:${s.toString().padStart(2, '0')}`);
+    };
+    tick();
+    const id = setInterval(tick, 1_000);
+    return () => clearInterval(id);
+  }, [deadline]);
+
+  return remaining;
+}
 
 function Skeleton() {
   return (
     <div className="space-y-3">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="h-24 animate-pulse rounded-xl bg-slate-200"
-        />
+      {[1, 2].map((i) => (
+        <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-200" />
       ))}
     </div>
   );
 }
 
-function ReservationCard({
+function ActiveCard({
   reservation,
-  onAction,
+  detail,
+  onRefresh,
 }: {
-  reservation: Reservation;
-  onAction: (id: number, action: 'confirm' | 'release') => Promise<void>;
+  reservation: MeReservation;
+  detail: Reservation | null;
+  onRefresh: () => Promise<void>;
 }) {
-  const [loading, setLoading] = useState<'confirm' | 'release' | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const { token } = useAuth();
+  const countdown = useCountdown(
+    reservation.status === 'reservada' ? reservation.confirm_deadline : null,
+  );
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [lateCancelWarning, setLateCancelWarning] = useState(false);
 
-  const estado = reservation.estado.toLowerCase();
-  const isReservada = estado === 'reservada' || reservation.estado === 'Reservado';
-  const isOcupada = estado === 'ocupada' || reservation.estado === 'Confirmado';
-
-  async function handleAction(action: 'confirm' | 'release') {
-    setError(null);
-    setLoading(action);
+  async function handleAction(action: 'confirm' | 'release' | 'cancel') {
+    if (!token) return;
+    setActionError(null);
+    setActionLoading(action);
     try {
-      await onAction(reservation.id, action);
+      const result = await reservationAction(token, reservation.id, action);
+      if (action === 'cancel' && result.is_late_cancellation) {
+        setLateCancelWarning(true);
+      }
+      await onRefresh();
     } catch (err) {
-      setError((err as ApiError)?.error ?? 'Error al procesar la acción');
+      setActionError(extractError(err));
     } finally {
-      setLoading(null);
+      setActionLoading(null);
     }
   }
 
-  const receiptUrl = `${process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8080'}/reservations/${reservation.id}/receipt`;
+  async function openReceipt() {
+    if (!token) return;
+    try {
+      const { url } = await getReceiptUrl(token, reservation.id);
+      window.open(url, '_blank', 'noopener');
+    } catch {
+      // receipt not available
+    }
+  }
+
+  const spaceLabel = detail?.space?.label ?? `Espacio #${reservation.space_id}`;
+  const plate = detail?.vehicle?.plate ?? `Vehículo #${reservation.vehicle_id}`;
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
-          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-100 text-lg font-bold text-slate-700">
-            {reservation.parking_space.code}
+          <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
+            {spaceLabel}
           </div>
-          <div className="space-y-0.5">
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-semibold">
-                {reservation.vehicle.plate}
-              </span>
-              <span className="text-xs capitalize text-slate-400">
-                {reservation.vehicle.vehicle_type}
-              </span>
+          <div className="space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-semibold">{plate}</span>
+              {detail?.vehicle?.vehicle_type && (
+                <span className="text-xs capitalize text-slate-400">{detail.vehicle.vehicle_type}</span>
+              )}
             </div>
-            <p className="text-xs text-slate-500">
-              {reservation.parking_space.tipo_vehiculo} · {reservation.date}
-            </p>
+            <p className="text-sm text-slate-500">{reservation.reservation_date}</p>
             <span
-              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-                BADGE[reservation.estado] ?? 'bg-slate-100 text-slate-600'
+              className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                STATUS_BADGE[reservation.status] ?? 'bg-slate-100 text-slate-600'
               }`}
             >
-              {reservation.estado}
+              {STATUS_LABELS[reservation.status] ?? reservation.status}
             </span>
+            {reservation.status === 'reservada' && countdown && (
+              <p className={`text-xs font-medium ${countdown === 'Expirado' ? 'text-red-600' : 'text-amber-600'}`}>
+                Confirmar en: {countdown}
+              </p>
+            )}
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 sm:flex-col sm:items-end">
-          {isReservada && (
-            <button
-              onClick={() => handleAction('confirm')}
-              disabled={!!loading}
-              className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
-            >
-              {loading === 'confirm' ? 'Procesando…' : 'Ocupar Parqueo'}
-            </button>
+        <div className="flex flex-wrap gap-2 sm:flex-col sm:items-end">
+          {reservation.status === 'reservada' && (
+            <>
+              <button
+                onClick={() => handleAction('confirm')}
+                disabled={!!actionLoading}
+                className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+              >
+                {actionLoading === 'confirm' ? 'Procesando…' : 'Confirmar llegada'}
+              </button>
+              <button
+                onClick={() => handleAction('cancel')}
+                disabled={!!actionLoading}
+                className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+              >
+                {actionLoading === 'cancel' ? 'Cancelando…' : 'Cancelar'}
+              </button>
+            </>
           )}
-          {isOcupada && (
+          {reservation.status === 'ocupada' && (
             <button
               onClick={() => handleAction('release')}
-              disabled={!!loading}
+              disabled={!!actionLoading}
               className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
             >
-              {loading === 'release' ? 'Procesando…' : 'Liberar anticipadamente'}
+              {actionLoading === 'release' ? 'Procesando…' : 'Liberar espacio'}
             </button>
           )}
-          <a
-            href={receiptUrl}
-            target="_blank"
-            rel="noopener noreferrer"
+          {detail?.receipt_s3_key && (
+            <button
+              onClick={openReceipt}
+              className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+            >
+              Ver comprobante
+            </button>
+          )}
+          <Link
+            href={`/receipt?id=${reservation.id}`}
             className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
           >
-            Ver comprobante
-          </a>
+            Ver detalle
+          </Link>
         </div>
       </div>
 
-      {error && (
-        <p className="mt-2 rounded-lg bg-red-50 px-3 py-1.5 text-xs text-red-700">
-          {error}
+      {actionError && (
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{actionError}</p>
+      )}
+      {lateCancelWarning && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+          Esta cancelación es tardía. Ten en cuenta que cancelaciones tardías repetidas pueden afectar tu cuenta.
         </p>
       )}
     </div>
   );
 }
 
-function HistoryRow({ reservation }: { reservation: Reservation }) {
-  return (
-    <tr className="border-b border-slate-100 last:border-0">
-      <td className="px-4 py-2.5 font-medium">{reservation.parking_space.code}</td>
-      <td className="px-4 py-2.5 text-slate-600">{reservation.vehicle.plate}</td>
-      <td className="px-4 py-2.5 text-slate-500">{reservation.date}</td>
-      <td className="px-4 py-2.5">
-        <span
-          className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium capitalize ${
-            BADGE[reservation.estado] ?? 'bg-slate-100 text-slate-600'
-          }`}
-        >
-          {reservation.estado}
-        </span>
-      </td>
-    </tr>
-  );
-}
-
 export default function ReservationsPage() {
   const { token } = useAuth();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
+  const [meReservations, setMeReservations] = useState<MeReservation[]>([]);
+  const [details, setDetails] = useState<Map<number, Reservation>>(new Map());
   const [loading, setLoading] = useState(true);
 
-  const fetchReservations = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
+    if (!token) return;
     try {
-      const data = await apiFetch<Reservation[]>(
-        '/me/reservations',
-        {},
-        token ?? undefined,
+      const rows = await myReservations(token);
+      setMeReservations(rows);
+
+      // Enrich active reservations with space/vehicle detail
+      const active = rows.filter((r) => !TERMINAL.has(r.status));
+      const enriched = await Promise.allSettled(
+        active.map((r) =>
+          getReservation(token, r.id).then((d) => [r.id, d] as [number, Reservation]),
+        ),
       );
-      setReservations(data);
+      const map = new Map<number, Reservation>();
+      for (const result of enriched) {
+        if (result.status === 'fulfilled') {
+          const [id, detail] = result.value;
+          map.set(id, detail);
+        }
+      }
+      setDetails(map);
     } catch {
-      // keep previous data on error
+      // keep previous data
     } finally {
       setLoading(false);
     }
   }, [token]);
 
   useEffect(() => {
-    fetchReservations();
-  }, [fetchReservations]);
+    fetchAll();
+  }, [fetchAll]);
 
-  async function handleAction(id: number, action: 'confirm' | 'release') {
-    await apiFetch(
-      `/reservations/${id}/${action}`,
-      { method: 'POST' },
-      token ?? undefined,
-    );
-    await fetchReservations();
-  }
-
-  const active = reservations.filter(isActive);
-  const history = reservations.filter((r) => !isActive(r));
+  const active = meReservations.filter((r) => !TERMINAL.has(r.status));
+  const history = meReservations.filter((r) => TERMINAL.has(r.status));
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
@@ -205,7 +253,7 @@ export default function ReservationsPage() {
           <Skeleton />
         ) : active.length === 0 ? (
           <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
-            <p className="text-slate-500">No tienes reservas activas</p>
+            <p className="text-slate-500">No tienes reservas activas.</p>
             <a
               href="/availability"
               className="mt-3 inline-block text-sm font-medium text-slate-900 underline underline-offset-2 hover:no-underline"
@@ -216,10 +264,11 @@ export default function ReservationsPage() {
         ) : (
           <div className="space-y-3">
             {active.map((r) => (
-              <ReservationCard
+              <ActiveCard
                 key={r.id}
                 reservation={r}
-                onAction={handleAction}
+                detail={details.get(r.id) ?? null}
+                onRefresh={fetchAll}
               />
             ))}
           </div>
@@ -235,15 +284,36 @@ export default function ReservationsPage() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-left">
-                  <th className="px-4 py-3 font-medium text-slate-700">Espacio</th>
-                  <th className="px-4 py-3 font-medium text-slate-700">Placa</th>
                   <th className="px-4 py-3 font-medium text-slate-700">Fecha</th>
                   <th className="px-4 py-3 font-medium text-slate-700">Estado</th>
+                  <th className="px-4 py-3 font-medium text-slate-700"></th>
                 </tr>
               </thead>
               <tbody>
                 {history.map((r) => (
-                  <HistoryRow key={r.id} reservation={r} />
+                  <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                    <td className="px-4 py-3 tabular-nums">{r.reservation_date}</td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
+                          STATUS_BADGE[r.status] ?? 'bg-slate-100 text-slate-600'
+                        }`}
+                      >
+                        {STATUS_LABELS[r.status] ?? r.status}
+                      </span>
+                      {r.is_late_cancellation && (
+                        <span className="ml-2 text-xs text-amber-600">Cancelación tardía</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      <Link
+                        href={`/receipt?id=${r.id}`}
+                        className="text-xs text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                      >
+                        Ver detalle
+                      </Link>
+                    </td>
+                  </tr>
                 ))}
               </tbody>
             </table>
