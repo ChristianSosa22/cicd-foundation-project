@@ -4,12 +4,34 @@ variable "environment" {
 }
 
 variable "name" {
-  description = "Name for the Lambda function."
+  description = "Name for the ECS service and related resources."
   type        = string
 }
 
-variable "memory_size" {
-  description = "Amount of memory in MB allocated to the Lambda function. Valid values: 128 to 10240."
+variable "cpu" {
+  description = "Number of CPU units for the Fargate task. Valid values: 256, 512, 1024, 2048, 4096."
   type        = number
-  default     = 128
+  default     = 256
+}
+
+variable "memory" {
+  description = "Amount of memory in MB for the Fargate task. Must be compatible with the cpu value."
+  type        = number
+  default     = 512
+}
+
+variable "region" {
+  description = "AWS region for the resources. Used for log configuration."
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "vpc_id" {
+  description = "ID of the VPC in which the ECS tasks security group is created."
+  type        = string
+}
+
+variable "subnet_ids" {
+  description = "Subnet IDs where the Fargate tasks are placed."
+  type        = list(string)
 }
