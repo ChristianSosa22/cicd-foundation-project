@@ -19,6 +19,12 @@ const STATUS_LABELS: Record<string, string> = {
   expirada: 'Expirada',
 };
 
+const CATEGORY_LABELS: Record<string, string> = {
+  ejecutivo: 'Ejecutivo',
+  operativo: 'Operativo',
+  visitante_frecuente: 'Visitante Frecuente',
+};
+
 const STATUS_CLASS: Record<string, string> = {
   reservada: 'text-amber-600 font-semibold',
   ocupada: 'text-blue-600 font-semibold',
@@ -130,16 +136,22 @@ function DetailContent() {
         {reservation.space && (
           <>
             <Row label="Espacio" value={reservation.space.label} />
-            <Row label="Tipo de espacio" value={reservation.space.vehicle_type} />
+            <Row
+              label="Tipo de espacio"
+              value={reservation.user_category ? (CATEGORY_LABELS[reservation.user_category] ?? reservation.user_category) : reservation.space.vehicle_type}
+            />
           </>
         )}
         {reservation.vehicle && (
           <>
             <Row label="Placa" value={reservation.vehicle.plate} />
-            <Row label="Tipo de vehículo" value={reservation.vehicle.vehicle_type} />
+            <Row
+              label="Tipo de vehículo"
+              value={reservation.vehicle.vehicle_type.charAt(0).toUpperCase() + reservation.vehicle.vehicle_type.slice(1)}
+            />
           </>
         )}
-        <Row label="Fecha" value={reservation.reservation_date} />
+        <Row label="Fecha" value={new Date(reservation.reservation_date + 'T00:00:00').toLocaleDateString('es-GT')} />
         <Row
           label="Estado"
           value={STATUS_LABELS[status] ?? status}

@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/lib/auth';
@@ -9,8 +10,21 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
   const { user, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   function handleLogout() {
+    setMenuOpen(false);
     logout();
     router.push('/login');
   }
@@ -47,23 +61,59 @@ export default function DriverLayout({ children }: { children: React.ReactNode }
               </Link>
             </nav>
           </div>
-          <div className="flex items-center gap-3">
-            {user && (
-              <span className="hidden text-sm text-slate-500 sm:block">{user.full_name}</span>
-            )}
-            <Link
-              href="/change-password"
-              className="rounded-lg px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
-            >
-              Contraseña
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="rounded-lg bg-slate-100 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
-            >
-              Cerrar sesión
-            </button>
-          </div>
+
+          {user && (
+            <div className="relative hidden sm:block" ref={menuRef}>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-50 py-1 pl-1 pr-2.5 transition-colors hover:bg-slate-100"
+              >
+                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-slate-900">
+                  <span className="text-xs font-bold leading-none text-white">
+                    {user.full_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <span className="text-sm font-medium text-slate-800">{user.full_name}</span>
+                <svg
+                  className={`h-3 w-3 text-slate-400 transition-transform duration-150 ${menuOpen ? 'rotate-180' : ''}`}
+                  viewBox="0 0 12 12"
+                  fill="none"
+                >
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+
+              {menuOpen && (
+                <div className="absolute right-0 top-full z-50 mt-2 w-52 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+                  <div className="flex items-center gap-3 bg-slate-100 px-4 py-3">
+                    <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-slate-900">
+                      <span className="text-sm font-bold leading-none text-white">
+                        {user.full_name.charAt(0).toUpperCase()}
+                      </span>
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-slate-900">{user.full_name}</p>
+                      <p className="text-xs text-slate-500">Conductor</p>
+                    </div>
+                  </div>
+                  <Link
+                    href="/change-password"
+                    onClick={() => setMenuOpen(false)}
+                    className="block px-4 py-2.5 text-sm text-slate-700 hover:bg-slate-50"
+                  >
+                    Cambiar contraseña
+                  </Link>
+                  <div className="border-t border-slate-100" />
+                  <button
+                    onClick={handleLogout}
+                    className="block w-full px-4 py-2.5 text-left text-sm text-red-600 hover:bg-red-50"
+                  >
+                    Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
       <RouteGuard requiredRole="driver">{children}</RouteGuard>

@@ -74,6 +74,7 @@ export interface Reservation {
   receipt_s3_key?: string | null;
   updated_at?: string;
   space?: { label: string; vehicle_type: string } | null;
+  user_category?: string | null;
   vehicle?: { plate: string; vehicle_type: string } | null;
 }
 

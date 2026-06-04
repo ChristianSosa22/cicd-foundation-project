@@ -6,21 +6,24 @@ import { getAvailability, type AvailabilitySpace } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 
 const ESTADO_CLASSES: Record<string, string> = {
-  Disponible: 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 cursor-pointer ring-emerald-200',
-  Reservado: 'bg-amber-100 text-amber-800 cursor-not-allowed opacity-70 ring-amber-200',
-  Ocupado: 'bg-red-100 text-red-800 cursor-not-allowed opacity-70 ring-red-200',
+  Disponible:
+    'bg-emerald-50 text-emerald-900 ring-emerald-200 hover:bg-emerald-100 hover:-translate-y-0.5 hover:shadow-lg cursor-pointer',
+  Reservado:
+    'bg-amber-50 text-amber-800 ring-amber-200 cursor-not-allowed opacity-60',
+  Ocupado:
+    'bg-red-50 text-red-800 ring-red-200 cursor-not-allowed opacity-60',
 };
 
 const LEGEND = [
-  { label: 'Disponible', color: 'bg-emerald-200' },
-  { label: 'Reservado', color: 'bg-amber-200' },
-  { label: 'Ocupado', color: 'bg-red-200' },
+  { label: 'Disponible', color: 'bg-emerald-400' },
+  { label: 'Reservado', color: 'bg-amber-400' },
+  { label: 'Ocupado', color: 'bg-red-400' },
 ];
 
-const TIPO_LABELS: Record<string, string> = {
-  auto: 'Auto',
-  moto: 'Moto',
-  camioneta: 'Camioneta',
+const TIPO_EMOJI: Record<string, string> = {
+  auto: '🚗',
+  moto: '🏍️',
+  camioneta: '🚐',
 };
 
 export default function AvailabilityPage() {
@@ -110,9 +113,9 @@ export default function AvailabilityPage() {
       </div>
 
       {fetching && spaces.length === 0 ? (
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
-          {Array.from({ length: 8 }).map((_, i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-200" />
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200" />
           ))}
         </div>
       ) : spaces.length === 0 ? (
@@ -120,19 +123,21 @@ export default function AvailabilityPage() {
           <p className="text-slate-500">No hay espacios disponibles para esta categoría o fecha.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-4 gap-3 sm:grid-cols-6 lg:grid-cols-8">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
           {spaces.map((space) => (
             <button
               key={space.id_espacio}
               onClick={() => handleClick(space)}
               disabled={space.estado !== 'Disponible'}
-              title={space.estado}
-              className={`rounded-xl p-3 text-center text-sm ring-1 ring-inset transition-colors ${
+              title={`${space.label} · ${space.estado}`}
+              className={`flex flex-col items-center gap-1.5 rounded-2xl p-4 text-center ring-1 ring-inset transition-all ${
                 ESTADO_CLASSES[space.estado] ?? 'bg-slate-100 text-slate-600 ring-slate-200'
               }`}
             >
-              <span className="block font-semibold">{space.label}</span>
-              <span className="block text-xs opacity-70">{TIPO_LABELS[space.tipo_vehiculo] ?? space.tipo_vehiculo}</span>
+              <span className="text-2xl leading-none">
+                {TIPO_EMOJI[space.tipo_vehiculo] ?? '🅿️'}
+              </span>
+              <span className="text-sm font-bold tracking-wide">{space.label}</span>
             </button>
           ))}
         </div>
