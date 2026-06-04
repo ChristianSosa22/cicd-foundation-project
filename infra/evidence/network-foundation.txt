@@ -1,0 +1,8 @@
+compute_cluster_arn = "arn:aws:ecs:us-east-1:733202870569:cluster/oyd-project-dev-cluster"
+compute_cluster_name = "oyd-project-dev-cluster"
+compute_task_definition_arn = "arn:aws:ecs:us-east-1:733202870569:task-definition/oyd-project-dev:1"
+db_endpoint = "oyd-project-dev-db.cutyuaiiee0n.us-east-1.rds.amazonaws.com:5432"
+db_instance_arn = "arn:aws:rds:us-east-1:733202870569:db:oyd-project-dev-db"
+db_security_group_id = "sg-073b317381f74d96c"
+storage_bucket_arn = "arn:aws:s3:::oyd-dev"
+storage_bucket_name = "oyd-dev"
