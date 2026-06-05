@@ -19,7 +19,7 @@ INSERT INTO users (email, password_hash, full_name, system_role, category) VALUE
    '$2a$12$3sL9eTTIuHR91B092btJ8uA3tLDw9.bbmppHw.7.wDJ03C1q55zn6',
    'Ana Ejecutivo',
    'driver',
-   'ejecutivo'),
+   'ejecutivo'),admin@parking.test
   ('driver.operativo@parking.test',
    '$2a$12$cmiSJQy2DUWhDUE64T49auLm9hiI2Owz/Xwk1/06lAJefMn1hEIFK',
    'Bruno Operativo',
