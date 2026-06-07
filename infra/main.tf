@@ -1,17 +1,18 @@
 # Module call order: network → ecr → storage → database → secrets → compute.
 # Secrets depend on the DB endpoint (for DATABASE_URL documentation).
-# Compute depends on ECR URLs, SSM ARNs, private subnet IDs, and the receipts bucket.
+# Compute depends on ECR URLs, SSM ARNs, private app subnet IDs, and the receipts bucket.
 
 module "network" {
   source = "./modules/network"
 
-  name                 = var.project_name
-  environment          = var.environment
-  vpc_cidr             = var.vpc_cidr
-  az_count             = var.az_count
-  public_subnet_cidrs  = var.public_subnet_cidrs
-  private_subnet_cidrs = var.private_subnet_cidrs
-  single_nat_gateway   = var.single_nat_gateway
+  name                      = var.project_name
+  environment               = var.environment
+  vpc_cidr                  = var.vpc_cidr
+  az_count                  = var.az_count
+  public_subnet_cidrs       = var.public_subnet_cidrs
+  private_app_subnet_cidrs  = var.private_app_subnet_cidrs
+  private_data_subnet_cidrs = var.private_data_subnet_cidrs
+  single_nat_gateway        = var.single_nat_gateway
 }
 
 module "ecr" {
@@ -44,7 +45,7 @@ module "database" {
   skip_final_snapshot        = var.skip_final_snapshot
   deletion_protection        = var.deletion_protection
   vpc_id                     = module.network.vpc_id
-  subnet_ids                 = module.network.private_subnet_ids
+  subnet_ids                 = module.network.private_data_subnet_ids
   ingress_security_group_ids = [module.compute.api_security_group_id]
 
   depends_on = [module.network]
@@ -64,7 +65,7 @@ module "compute" {
   name               = var.project_name
   region             = var.region
   vpc_id             = module.network.vpc_id
-  private_subnet_ids = module.network.private_subnet_ids
+  private_subnet_ids = module.network.private_app_subnet_ids
 
   # Image URIs: ECR repo URL + configurable tag
   api_image = "${module.ecr.api_repository_url}:${var.api_image_tag}"

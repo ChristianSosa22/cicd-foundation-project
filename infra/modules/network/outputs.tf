@@ -13,9 +13,14 @@ output "public_subnet_ids" {
   value       = aws_subnet.public[*].id
 }
 
-output "private_subnet_ids" {
-  description = "List of IDs for the private subnets, one per AZ. Pass these to the compute and database modules."
-  value       = aws_subnet.private[*].id
+output "private_app_subnet_ids" {
+  description = "List of IDs for the private application subnets, one per AZ. Pass these to the compute module (ECS Fargate tasks)."
+  value       = aws_subnet.private_app[*].id
+}
+
+output "private_data_subnet_ids" {
+  description = "List of IDs for the isolated private data subnets, one per AZ. Pass these to the database module (RDS)."
+  value       = aws_subnet.private_data[*].id
 }
 
 output "nat_gateway_ids" {

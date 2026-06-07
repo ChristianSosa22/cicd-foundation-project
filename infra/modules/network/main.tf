@@ -42,17 +42,32 @@ resource "aws_subnet" "public" {
   })
 }
 
-# Private subnets — one per AZ. ECS tasks and RDS instances live here.
+# Private application subnets — one per AZ. ECS Fargate tasks live here.
 # No direct internet route; egress is via the NAT Gateway.
-resource "aws_subnet" "private" {
+resource "aws_subnet" "private_app" {
   count             = var.az_count
   vpc_id            = aws_vpc.this.id
-  cidr_block        = var.private_subnet_cidrs[count.index]
+  cidr_block        = var.private_app_subnet_cidrs[count.index]
   availability_zone = local.azs[count.index]
 
   tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-private-${local.azs[count.index]}"
-    Tier = "private"
+    Name = "${var.name}-${var.environment}-private-app-${local.azs[count.index]}"
+    Tier = "app"
+  })
+}
+
+# Private data subnets — one per AZ. RDS instances are isolated here.
+# These subnets have no route to a NAT Gateway or the Internet Gateway;
+# the database is reachable only from within the VPC (app tier via its SG).
+resource "aws_subnet" "private_data" {
+  count             = var.az_count
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = var.private_data_subnet_cidrs[count.index]
+  availability_zone = local.azs[count.index]
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-private-data-${local.azs[count.index]}"
+    Tier = "data"
   })
 }
 
@@ -135,11 +150,30 @@ resource "aws_route" "private_nat" {
   nat_gateway_id         = aws_nat_gateway.this[count.index].id
 }
 
-# Associate each private subnet with its route table.
+# Associate each private application subnet with its route table.
 # When single_nat_gateway=true: all subnets share private[0].
 # When single_nat_gateway=false: subnet i routes through its AZ-local NAT private[i].
-resource "aws_route_table_association" "private" {
+resource "aws_route_table_association" "private_app" {
   count          = var.az_count
-  subnet_id      = aws_subnet.private[count.index].id
+  subnet_id      = aws_subnet.private_app[count.index].id
   route_table_id = aws_route_table.private[var.single_nat_gateway ? 0 : count.index].id
+}
+
+# ── Data route table ───────────────────────────────────────────────────────────
+# Dedicated route table for the data tier with no default (0.0.0.0/0) route.
+# Only the implicit VPC-local route applies, so RDS has no path to the internet
+# in either direction — true network isolation for the database subnets.
+resource "aws_route_table" "data" {
+  vpc_id = aws_vpc.this.id
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-rt-data"
+  })
+}
+
+# Associate every data subnet with the isolated data route table.
+resource "aws_route_table_association" "private_data" {
+  count          = var.az_count
+  subnet_id      = aws_subnet.private_data[count.index].id
+  route_table_id = aws_route_table.data.id
 }
