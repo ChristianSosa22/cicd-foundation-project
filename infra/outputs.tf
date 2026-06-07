@@ -10,9 +10,14 @@ output "public_subnet_ids" {
   value       = module.network.public_subnet_ids
 }
 
-output "private_subnet_ids" {
-  description = "IDs of the private subnets (one per AZ). Used by ECS tasks and RDS."
-  value       = module.network.private_subnet_ids
+output "private_app_subnet_ids" {
+  description = "IDs of the private application subnets (one per AZ). Used by ECS Fargate tasks."
+  value       = module.network.private_app_subnet_ids
+}
+
+output "private_data_subnet_ids" {
+  description = "IDs of the isolated private data subnets (one per AZ). Used by RDS."
+  value       = module.network.private_data_subnet_ids
 }
 
 output "nat_gateway_ids" {
