@@ -1,0 +1,12 @@
+# Security Groups Plan Evidence
+# Run `terraform plan -var-file=envs/dev/dev.tfvars -no-color` from infra/
+# and pipeline the output here to show the created security group rules.
+#
+# Expected resources:
+# - module.security.aws_security_group.web (web-sg)
+# - module.security.aws_security_group.app (app-sg)
+# - module.security.aws_security_group.web_service (web-service-sg)
+# - module.security.aws_security_group.db (db-sg)
+# - module.security.aws_security_group_rule.* (all rules)
+#
+# Replace this placeholder with the actual `terraform plan` output.

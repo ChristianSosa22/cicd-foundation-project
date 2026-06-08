@@ -117,67 +117,6 @@ resource "aws_iam_role_policy" "api_s3_receipts" {
   })
 }
 
-# ── Security Groups ───────────────────────────────────────────────────────────
-# Note: ingress is currently open within the VPC for development convenience.
-# In the ALB follow-up task these rules will be replaced with source-SG rules
-# scoped to the ALB security group only.
-
-resource "aws_security_group" "api" {
-  name        = "${var.name}-${var.environment}-api-sg"
-  description = "API service (port 8080). Ingress will be locked to ALB SG in follow-up."
-  vpc_id      = var.vpc_id
-
-  ingress {
-    description = "API port 8080 - restrict to ALB SG when ALB module is added"
-    from_port   = 8080
-    to_port     = 8080
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "All outbound: RDS access, ECR pull, CloudWatch Logs, S3 via NAT"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Environment = var.environment
-    Service     = "api"
-    ManagedBy   = "terraform"
-  }
-}
-
-resource "aws_security_group" "web" {
-  name        = "${var.name}-${var.environment}-web-sg"
-  description = "Web service (port 3000). Ingress will be locked to ALB SG in follow-up."
-  vpc_id      = var.vpc_id
-
-  ingress {
-    description = "Next.js port 3000 - restrict to ALB SG when ALB module is added"
-    from_port   = 3000
-    to_port     = 3000
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  egress {
-    description = "All outbound: ECR pull, CloudWatch Logs, API calls via NAT"
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = {
-    Environment = var.environment
-    Service     = "web"
-    ManagedBy   = "terraform"
-  }
-}
-
 # ── Task Definitions ──────────────────────────────────────────────────────────
 
 # API: Node/Express backend. Health check uses /ready (DB-aware) per health.routes.ts.
@@ -306,7 +245,7 @@ resource "aws_ecs_service" "api" {
 
   network_configuration {
     subnets          = var.private_subnet_ids
-    security_groups  = [aws_security_group.api.id]
+    security_groups  = [var.api_security_group_id]
     assign_public_ip = false
   }
 
@@ -332,7 +271,7 @@ resource "aws_ecs_service" "web" {
 
   network_configuration {
     subnets          = var.private_subnet_ids
-    security_groups  = [aws_security_group.web.id]
+    security_groups  = [var.web_service_security_group_id]
     assign_public_ip = false
   }
 

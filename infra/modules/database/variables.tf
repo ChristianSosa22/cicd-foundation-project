@@ -72,18 +72,12 @@ variable "deletion_protection" {
   default     = false
 }
 
-variable "vpc_id" {
-  description = "ID of the VPC in which the DB security group and subnet group are created. Must be the custom VPC from the network module."
-  type        = string
-}
-
 variable "subnet_ids" {
   description = "Private subnet IDs used for the RDS DB subnet group. The DB will only be reachable from within these subnets."
   type        = list(string)
 }
 
-variable "ingress_security_group_ids" {
-  description = "Security group IDs allowed to connect to the database on db_port. Typically the API ECS task security group."
-  type        = list(string)
-  default     = []
+variable "db_security_group_id" {
+  description = "ID of the database security group (db-sg) from the security module. Attached to the RDS instance."
+  type        = string
 }

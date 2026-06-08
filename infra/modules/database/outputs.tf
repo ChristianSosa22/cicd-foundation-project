@@ -24,6 +24,6 @@ output "db_name" {
 }
 
 output "db_security_group_id" {
-  description = "ID of the security group associated with the RDS instance. Reference this to add further ingress rules if needed."
-  value       = aws_security_group.db_sg.id
+  description = "ID of the security group associated with the RDS instance (from the security module)."
+  value       = var.db_security_group_id
 }
