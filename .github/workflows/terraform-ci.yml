@@ -107,8 +107,8 @@ jobs:
           # command to run the idempotent seed script.
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           SERVICE=$(terraform output -raw ecs_api_service_name)
-          SG=$(terraform output -raw ecs_api_security_group_id)
-          SUBNETS=$(terraform output -json private_subnet_ids | tr -d '[]"' )
+          SG=$(terraform output -raw app_security_group_id)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
 
           # Resolve the task definition currently used by the API service
           TASKDEF=$(aws ecs describe-services \
