@@ -107,3 +107,15 @@ variable "receipts_bucket_arn" {
   description = "ARN of the S3 receipts bucket. Grants the API task role s3:GetObject and s3:PutObject on this bucket for receipt storage and presigned URL generation."
   type        = string
 }
+
+# ── ALB integration (provided by the alb module via the root module) ──────────
+
+variable "api_target_group_arn" {
+  description = "ARN of the ALB target group for the API service. The API ECS service registers its task IPs here via its load_balancer block."
+  type        = string
+}
+
+variable "web_target_group_arn" {
+  description = "ARN of the ALB target group for the web service. The web ECS service registers its task IPs here via its load_balancer block."
+  type        = string
+}

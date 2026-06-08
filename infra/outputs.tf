@@ -6,7 +6,7 @@ output "vpc_id" {
 }
 
 output "public_subnet_ids" {
-  description = "IDs of the public subnets (one per AZ). Pass to the ALB module in the follow-up task."
+  description = "IDs of the public subnets (one per AZ). Consumed by the ALB module for the internet-facing load balancer."
   value       = module.network.public_subnet_ids
 }
 
@@ -67,12 +67,12 @@ output "ecs_cluster_arn" {
 }
 
 output "ecs_api_service_name" {
-  description = "Name of the API ECS service. Reference this when adding ALB target group."
+  description = "Name of the API ECS service. Registered behind the ALB API target group."
   value       = module.compute.api_service_name
 }
 
 output "ecs_web_service_name" {
-  description = "Name of the web ECS service. Reference this when adding ALB target group."
+  description = "Name of the web ECS service. Registered behind the ALB web target group."
   value       = module.compute.web_service_name
 }
 
@@ -123,4 +123,16 @@ output "receipts_bucket_name" {
 output "receipts_bucket_arn" {
   description = "ARN of the S3 receipts bucket."
   value       = module.storage.bucket_arn
+}
+
+# ── Load Balancer (public ingress) ────────────────────────────────────────────
+
+output "alb_dns_name" {
+  description = "Public DNS name of the ALB. Resolve and curl this to reach the application."
+  value       = module.alb.alb_dns_name
+}
+
+output "alb_url" {
+  description = "Public HTTP URL of the application (http://<alb_dns_name>). Web frontend at /, backend at /api, /availability, /reservar. Use this in curl evidence."
+  value       = module.alb.alb_url
 }

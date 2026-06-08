@@ -1,5 +1,7 @@
-# Module call order: network → security → ecr → storage → database → secrets → compute.
-# Compute depends on ECR URLs, SSM ARNs, private app subnet IDs, SG IDs, and the receipts bucket.
+# Module call order: network → security → alb → ecr → storage → database → secrets → compute.
+# Security provides the chained SGs (web/ALB, app, web-service, db). The ALB reuses the
+# web (public-facing) SG from the security module and registers task IPs in its target groups.
+# Compute depends on ECR URLs, SSM ARNs, private subnet IDs, SG IDs, the receipts bucket, and the ALB.
 
 module "network" {
   source = "./modules/network"
@@ -99,5 +101,22 @@ module "compute" {
   # IAM: scope the API task role to the receipts bucket
   receipts_bucket_arn = module.storage.bucket_arn
 
-  depends_on = [module.network, module.security, module.ecr, module.secrets]
+  # ALB integration: register API/web task IPs in the ALB target groups.
+  api_target_group_arn = module.alb.api_target_group_arn
+  web_target_group_arn = module.alb.web_target_group_arn
+
+  depends_on = [module.network, module.security, module.ecr, module.secrets, module.alb]
+}
+
+module "alb" {
+  source = "./modules/alb"
+
+  name              = var.project_name
+  environment       = var.environment
+  vpc_id            = module.network.vpc_id
+  public_subnet_ids = module.network.public_subnet_ids
+  security_group_id = module.security.web_security_group_id
+  health_check_path = var.health_check_path
+
+  depends_on = [module.network, module.security]
 }

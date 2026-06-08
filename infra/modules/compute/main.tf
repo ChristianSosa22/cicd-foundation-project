@@ -243,10 +243,21 @@ resource "aws_ecs_service" "api" {
   desired_count   = var.api_desired_count
   launch_type     = "FARGATE"
 
+  # Give tasks time to boot and pass the ALB health check before ECS judges them.
+  health_check_grace_period_seconds = 90
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.api_security_group_id]
     assign_public_ip = false
+  }
+
+  # Register task IPs in the API target group; ALB routes /api, /availability,
+  # /reservar, /health, /ready to these tasks on port 8080.
+  load_balancer {
+    target_group_arn = var.api_target_group_arn
+    container_name   = "api"
+    container_port   = 8080
   }
 
   # Ignore task_definition so CI can deploy new images via 'aws ecs update-service'
@@ -269,10 +280,20 @@ resource "aws_ecs_service" "web" {
   desired_count   = var.web_desired_count
   launch_type     = "FARGATE"
 
+  health_check_grace_period_seconds = 90
+
   network_configuration {
     subnets          = var.private_subnet_ids
     security_groups  = [var.web_service_security_group_id]
     assign_public_ip = false
+  }
+
+  # Register task IPs in the web target group; ALB default action (all paths
+  # not matched by the API rule) forwards here on port 3000.
+  load_balancer {
+    target_group_arn = var.web_target_group_arn
+    container_name   = "web"
+    container_port   = 3000
   }
 
   lifecycle {

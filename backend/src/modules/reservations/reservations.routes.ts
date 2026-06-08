@@ -95,7 +95,11 @@ reservarRouter.post(
         })
         .returning();
 
-      // 7. Fire-and-forget receipt generation (only when S3 is configured)
+      // 7. Receipt key is deterministic (receipts/<id>.pdf) so we can return it
+      //    in the 201 response immediately, while the PDF upload runs in the
+      //    background (fire-and-forget) without blocking the response.
+      const receiptKey = `receipts/${reservation.id}.pdf`;
+
       if (env.S3_BUCKET) {
         void (async () => {
           try {
@@ -108,9 +112,8 @@ reservarRouter.post(
               driverName: u?.fullName ?? '',
               reservationDate: body.reservation_date,
             });
-            const key = `receipts/${reservation.id}.pdf`;
-            await s3.send(new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: key, Body: pdfBytes, ContentType: 'application/pdf' }));
-            await db.update(reservations).set({ receiptS3Key: key }).where(eq(reservations.id, reservation.id));
+            await s3.send(new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: receiptKey, Body: pdfBytes, ContentType: 'application/pdf' }));
+            await db.update(reservations).set({ receiptS3Key: receiptKey }).where(eq(reservations.id, reservation.id));
           } catch (err) {
             logger.error({ err }, '[reservar] receipt generation failed');
           }
@@ -124,6 +127,7 @@ reservarRouter.post(
         reservation_date: reservation.reservationDate,
         status: reservation.status,
         confirm_deadline: reservation.confirmDeadline,
+        receipt_s3_key: receiptKey,
       });
     } catch (err) {
       next(err);
