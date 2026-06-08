@@ -88,6 +88,105 @@ terraform destroy -var-file=envs/dev/dev.tfvars
 
 ---
 
+## 4. Populating Runtime Secrets (SSM Parameter Store)
+
+After `terraform apply`, the SSM parameters exist with placeholder values. Real values must be set **once out-of-band** before starting the ECS tasks. This keeps secrets out of Terraform state and plan diffs.
+
+First, get the RDS endpoint from Terraform outputs:
+```bash
+terraform output db_address
+terraform output db_port
+```
+
+Then set each parameter (replace values as appropriate):
+```bash
+# DATABASE_URL — assemble from RDS outputs
+aws ssm put-parameter \
+  --name "/oyd-project/dev/DATABASE_URL" \
+  --type SecureString \
+  --value "postgres://parking_user:YOUR_PASSWORD@RDS_HOST:5432/parking" \
+  --overwrite
+
+# JWT signing secret (minimum 16 characters)
+aws ssm put-parameter \
+  --name "/oyd-project/dev/JWT_SECRET" \
+  --type SecureString \
+  --value "$(openssl rand -hex 32)" \
+  --overwrite
+
+# AES-256-GCM column encryption key (base64 of 32 random bytes)
+aws ssm put-parameter \
+  --name "/oyd-project/dev/ENCRYPTION_KEY" \
+  --type SecureString \
+  --value "$(openssl rand -base64 32)" \
+  --overwrite
+
+# HMAC-SHA256 key for deterministic plate hashing
+aws ssm put-parameter \
+  --name "/oyd-project/dev/HMAC_KEY" \
+  --type SecureString \
+  --value "$(openssl rand -hex 32)" \
+  --overwrite
+```
+
+> After setting real values, re-running `terraform apply` will **not** overwrite them — each parameter has `lifecycle { ignore_changes = [value] }`.
+
+---
+
+## 5. Building and Pushing Container Images to ECR
+
+ECS cannot pull images from a local Docker daemon. Images must be pushed to ECR first.
+
+```bash
+# 1. Get account ID and ECR repo URLs from Terraform outputs
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
+API_REPO=$(terraform output -raw ecr_api_repository_url)
+WEB_REPO=$(terraform output -raw ecr_web_repository_url)
+
+# 2. Authenticate Docker to ECR
+aws ecr get-login-password --region us-east-1 | \
+  docker login --username AWS --password-stdin "${AWS_ACCOUNT_ID}.dkr.ecr.us-east-1.amazonaws.com"
+
+# 3. Build and push the API image
+cd ../backend
+docker build -t "${API_REPO}:latest" .
+docker push "${API_REPO}:latest"
+
+# 4. Build and push the web image
+# IMPORTANT: NEXT_PUBLIC_API_URL is baked into the JS bundle at build time.
+# Replace <ALB_URL> with your backend's public URL (ALB DNS name or domain).
+cd ../frontend
+docker build \
+  --build-arg NEXT_PUBLIC_API_URL=http://<ALB_URL> \
+  -t "${WEB_REPO}:latest" .
+docker push "${WEB_REPO}:latest"
+```
+
+Once images are pushed, force a service update so ECS pulls the new image:
+```bash
+aws ecs update-service \
+  --cluster oyd-project-dev-cluster \
+  --service oyd-project-dev-api-svc \
+  --force-new-deployment
+
+aws ecs update-service \
+  --cluster oyd-project-dev-cluster \
+  --service oyd-project-dev-web-svc \
+  --force-new-deployment
+```
+
+---
+
+## 6. Applying the Database Schema
+
+No migration runner is wired. Run the schema DDL manually after RDS is provisioned:
+```bash
+psql "postgres://parking_user:YOUR_PASSWORD@RDS_HOST:5432/parking" \
+  -f ../backend/sql/schema.sql
+```
+
+---
+
 ## Evidence
 
 ### Remote State (S3 + DynamoDB)
@@ -122,3 +221,20 @@ El output del comando CLI utilizado para verificar el despliegue fue guardado en
     "ActiveServicesCount": 0
 }
 ```
+
+### Network Foundation: `terraform output`
+
+El siguiente output fue capturado con `terraform output` desde `infra/` y guardado en `evidence/network-foundation.txt`. Refleja el state remoto en S3 en el momento de la entrega D3, antes de ejecutar `terraform apply` con la nueva configuración de red (el apply completo requiere credenciales AWS y propagación del nuevo módulo `network`). Los outputs de VPC, subnets, NAT y ECR aparecerán en su totalidad tras el primer apply con la configuración D3.
+
+```
+compute_cluster_arn         = "arn:aws:ecs:us-east-1:733202870569:cluster/oyd-project-dev-cluster"
+compute_cluster_name        = "oyd-project-dev-cluster"
+compute_task_definition_arn = "arn:aws:ecs:us-east-1:733202870569:task-definition/oyd-project-dev:1"
+db_endpoint                 = "oyd-project-dev-db.cutyuaiiee0n.us-east-1.rds.amazonaws.com:5432"
+db_instance_arn             = "arn:aws:rds:us-east-1:733202870569:db:oyd-project-dev-db"
+db_security_group_id        = "sg-073b317381f74d96c"
+storage_bucket_arn          = "arn:aws:s3:::oyd-dev"
+storage_bucket_name         = "oyd-dev"
+```
+
+El archivo completo se encuentra en [`evidence/network-foundation.txt`](evidence/network-foundation.txt).

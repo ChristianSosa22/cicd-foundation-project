@@ -180,7 +180,9 @@ export default function HistoryPage() {
                   </td>
                   <td className="px-4 py-3 font-medium">{r.space.label}</td>
                   <td className="px-4 py-3 capitalize text-slate-500">{r.space.vehicleType}</td>
-                  <td className="px-4 py-3 tabular-nums">{r.reservationDate}</td>
+                  <td className="px-4 py-3 tabular-nums">
+                    {new Date(r.reservationDate + 'T00:00:00').toLocaleDateString('es-GT')}
+                  </td>
                   <td className="px-4 py-3">
                     <span
                       className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${

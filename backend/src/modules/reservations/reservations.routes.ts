@@ -166,11 +166,13 @@ reservationsRouter.get('/:id', validate({ params: idParam }), async (req, res, n
     // Enrich with space and vehicle info
     const [space] = await db.select({ label: parkingSpaces.label, vehicleType: parkingSpaces.vehicleType }).from(parkingSpaces).where(eq(parkingSpaces.id, reservation.spaceId)).limit(1);
     const [vehicle] = await db.select({ plateEnc: vehicles.plateEnc, vehicleType: vehicles.vehicleType }).from(vehicles).where(eq(vehicles.id, reservation.vehicleId)).limit(1);
+    const [owner] = await db.select({ category: users.category }).from(users).where(eq(users.id, reservation.userId)).limit(1);
 
     res.json({
       ...mapReservation(reservation as unknown as Record<string, unknown>),
       space: space ? { label: space.label, vehicle_type: space.vehicleType } : null,
       vehicle: vehicle ? { plate: decrypt(vehicle.plateEnc), vehicle_type: vehicle.vehicleType } : null,
+      user_category: owner?.category ?? null,
     });
   } catch (err) {
     next(err);
