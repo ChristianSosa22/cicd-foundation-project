@@ -50,5 +50,5 @@ variable "api_health_check_path" {
 variable "api_path_patterns" {
   description = "List of listener path patterns routed to the API target group. Everything not matching these falls through to the web target group (default action)."
   type        = list(string)
-  default     = ["/api/*", "/availability", "/availability/*", "/reservar", "/reservar/*", "/reservations/*", "/health", "/ready"]
+  default     = ["/api/*", "/availability*", "/reservar*", "/reservations/*", "/health"]
 }
