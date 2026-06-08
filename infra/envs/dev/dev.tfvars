@@ -35,3 +35,8 @@ api_cpu       = 256
 api_memory    = 512
 web_cpu       = 256
 web_memory    = 512
+
+# ── ALB ───────────────────────────────────────────────────────────────────────
+# Health check path for the web target group. Spec default is "/", which Next.js
+# answers with a 307 -> /login (matched by the 200-399 health matcher).
+health_check_path = "/"

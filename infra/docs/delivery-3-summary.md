@@ -100,6 +100,8 @@ module "compute" {
 
 **`infra/modules/secrets/`** — Aprovisiona cuatro parámetros SSM SecureString (`DATABASE_URL`, `JWT_SECRET`, `ENCRYPTION_KEY`, `HMAC_KEY`) bajo el path `/<project>/<env>/<KEY>`. Se usa el **Patrón A**: Terraform crea el recurso con un valor placeholder y `lifecycle { ignore_changes = [value] }` — los valores reales se inyectan una sola vez con `aws ssm put-parameter --overwrite` fuera de Terraform. Esto garantiza que ninguna credencial real entra al `terraform.tfstate`. Los ARNs de los parámetros se pasan al módulo compute, que los referencia en el bloque `secrets` de la task definition para que el agente Fargate los inyecte al arrancar el contenedor.
 
+**`infra/modules/alb/`** — Provisiona el ingress público de la aplicación: un Application Load Balancer internet-facing colocado en las subnets públicas (`module.network.public_subnet_ids`), su security group, dos target groups (`api` en `:8080`, `web` en `:3000`) con `target_type = ip` (requerido por el modo `awsvpc` de Fargate), y un listener en el puerto 80. El listener usa enrutamiento por path: una regla de prioridad 100 envía `/api/*`, `/availability`, `/reservar`, `/reservations/*`, `/health` y `/ready` al target group del API; el resto del tráfico (acción por defecto) va al target group del web. El health check del target group web usa `var.health_check_path` (default `/`, con matcher `200-399` porque Next.js responde `307 → /login` en la raíz), mientras que el del API usa `/health`. El módulo exporta `alb_dns_name` y `alb_url` (la URL pública dinámica expuesta como output del root), además de `alb_security_group_id` y los ARNs de los target groups, que el módulo `compute` consume para registrar los tasks de Fargate y para restringir el ingress de sus security groups.
+
 ---
 
 ## 3. D2 wiring update
@@ -163,8 +165,6 @@ ssm_parameter_names = {
 }
 ```
 
-El `vpc_id` confirma que ya no se usa el VPC por defecto de AWS — el ID `vpc-0a1b...` corresponde al VPC custom creado por `module.network`. Las subnets privadas son las que reciben los tasks de Fargate y la instancia RDS; las públicas están reservadas para el ALB que se agrega en la siguiente entrega.
-
 ---
 
 ## 4. Security
@@ -209,3 +209,75 @@ Se implementaron dos NACLs stateless en el módulo `infra/modules/network/nacl.t
 - Outbound: HTTP, HTTPS y efímeros a `0.0.0.0/0`, efímeros al VPC CIDR.
 
 Al ser stateless, ambos NACLs incluyen reglas explícitas para el rango de puertos efímeros (`1024-65535`) en inbound y outbound, permitiendo que las respuestas de peticiones legítimas fluyan sin bloqueos. Todas las reglas son recursos Terraform explícitos (`aws_network_acl_rule`).
+
+---
+
+## 5. Capa de Ingress, Endpoints, Seeders y CI/CD
+
+Esta sección documenta la capa de exposición pública, la lógica funcional de negocio, la automatización de datos semilla y la extensión del pipeline de integración continua.
+
+### 4.1 Ingress público (ALB)
+
+El Application Load Balancer (módulo `infra/modules/alb/`, descrito en la sección 2) es el único punto de entrada desde internet. Su diseño aplica el principio de mínimo perímetro expuesto:
+
+- **Aislamiento de cómputo:** los tasks de ECS Fargate viven en subnets privadas sin IP pública (`assign_public_ip = false`). El tráfico de los usuarios nunca llega directo a los contenedores; siempre pasa por el ALB.
+- **Security group encadenado:** el `alb-sg` acepta tráfico público solo en los puertos 80/443. A su vez, los security groups del API (`:8080`) y del web (`:3000`) fueron refactorizados para aceptar ingress **únicamente desde el `alb-sg`** (vía `security_groups = [var.alb_security_group_id]`), eliminando los bloques `0.0.0.0/0` que existían en D2. Así, aunque alguien conociera la IP privada de un task, no podría alcanzarlo sin pasar por el balanceador.
+- **URL pública dinámica:** el root expone `alb_url` como output, evitando hardcodear DNS. Este valor es el que se usa en las evidencias `curl` y como base pública de la aplicación.
+
+### 4.2 Endpoints funcionales de negocio
+
+Los dos endpoints críticos definidos por la especificación ya están implementados en el backend (Node/Express) y fueron verificados contra los requisitos de la entrega:
+
+- **`GET /availability`** (`availability.routes.ts`): requiere autenticación (`requireAuth`), consulta RDS PostgreSQL en tiempo real cruzando tres fuentes (espacios activos, reservas vigentes del día y blackouts), y devuelve un JSON estructurado por espacio con su `estado` (`Disponible` / `Ocupado` / `Reservado`) y `ultima_actualizacion`. Para conductores, filtra los espacios según su `category`. Decisión de diseño: el endpoint retorna el **detalle por espacio** en lugar de un conteo agregado, porque el conteo es derivable trivialmente del detalle y este último es más útil para el frontend.
+
+- **`POST /reservar`** (`reservations.routes.ts`): requiere rol `driver`, valida el payload con Zod (`space_id`, `vehicle_id`, `reservation_date`) y aplica seis validaciones de negocio (propiedad y aprobación del vehículo, existencia y estado del espacio, compatibilidad de tipo, categoría permitida, ausencia de blackout) antes de un INSERT atómico. Tras crear la reserva, genera un comprobante PDF y lo persiste en el bucket S3 de comprobantes. Responde **HTTP 201 Created** incluyendo el identificador único del archivo (`receipt_s3_key`, con formato determinista `receipts/<id>.pdf`).
+
+**Ajuste realizado en esta entrega:** originalmente la respuesta 201 no incluía la Key del comprobante porque la subida a S3 era completamente asíncrona (fire-and-forget). Para cumplir la especificación ("responder con la Key del archivo generado"), se calculó la Key de forma determinista **antes** del bloque asíncrono y se incluyó en la respuesta 201, manteniendo la subida del PDF en segundo plano para no bloquear la respuesta. La verificación de tipos (`tsc --noEmit`) pasa sin errores.
+
+### 4.3 Automatización de seeders
+
+La especificación prohíbe la inserción manual de datos y exige que el catálogo (usuarios, espacios, categorías permitidas, tarifas y settings) se inyecte automáticamente tras el aprovisionamiento. La solución tiene dos piezas:
+
+**Pieza 1 — Script de seed idempotente.** El archivo `backend/sql/seed.sql` se hizo idempotente para que pueda ejecutarse múltiples veces (reintentos de CI, merges sucesivos) sin fallar por claves duplicadas ni insertar datos repetidos:
+- Los INSERT con restricción única usan `ON CONFLICT ... DO NOTHING` (`users` por `email`, `parking_spaces` por `label`, `space_allowed_category` por su PK `(space_id, category)`, `settings` por `key`).
+- La tabla `tariffs` es append-only y no tiene restricción única sobre el tipo de vehículo, por lo que se usó `WHERE NOT EXISTS (SELECT 1 FROM tariffs)` para que el bloque solo siembre cuando la tabla está vacía.
+- Se corrigió además un fragmento de texto inválido que rompía la sintaxis del archivo original.
+
+Se agregaron los scripts `db:seed` (aplica `seed.sql` con `ON_ERROR_STOP=1`) y `db:init` (aplica schema + seed en orden para entornos nuevos) en `backend/package.json`.
+
+**Pieza 2 — Ejecución dentro de la VPC.** Como la instancia RDS está en subnet privada (sin acceso público, por diseño de seguridad), el runner de GitHub Actions no puede conectarse a ella directamente. Ejecutar el seed desde una "terminal externa" violaría tanto la regla de la especificación como el aislamiento de red. Por eso el seed se ejecuta como una **tarea puntual de ECS Fargate** (`aws ecs run-task`) lanzada dentro de las subnets privadas, donde el security group del API sí tiene permitido alcanzar la base de datos. La tarea sobreescribe el comando del contenedor para ejecutar `npm run db:seed` y termina al finalizar. La imagen del API se extendió para incluir `postgresql-client` (psql), necesario para el script.
+
+### 4.4 Extensión del pipeline de CI/CD (GitHub Actions)
+
+El workflow `.github/workflows/terraform-ci.yml` se extendió para cubrir el ciclo completo de infraestructura como código, manteniendo la higiene de credenciales vía GitHub Secrets:
+
+- **Plan-on-PR (job `plan`):** se dispara en Pull Requests hacia `main` (eventos `opened`, `synchronize`, `reopened`). Ejecuta `init`, `fmt --check`, `validate` y `terraform plan` con `envs/dev/dev.tfvars`, y publica el output completo del plan como comentario en la conversación del PR mediante `actions/github-script`, permitiendo revisar los cambios de infraestructura antes de aprobar.
+
+- **Apply-on-Merge (job `apply`):** se dispara **única y exclusivamente** cuando un PR es cerrado y fusionado a `main` (`types: [closed]` + condición `github.event.pull_request.merged == true`). Ejecuta `terraform apply -auto-approve` con el mismo `dev.tfvars`. Inmediatamente después, dispara el seed automatizado vía `aws ecs run-task` (descrito en 4.3), leyendo los outputs de Terraform (`ecs_cluster_name`, `ecs_api_service_name`, `ecs_api_security_group_id`, `private_subnet_ids`) para configurar la red de la tarea.
+
+- **Higiene de secretos:** las credenciales de AWS (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`) y la contraseña de la base de datos (`DB_PASSWORD`) se inyectan desde GitHub Secrets; ningún valor sensible está hardcodeado en el repositorio.
+
+**Limitaciones conocidas (mejoras futuras):** (1) el step de seed es fire-and-forget — lanza la tarea ECS pero no espera su finalización ni verifica el exit code; una mejora sería añadir `aws ecs wait tasks-stopped` y validar el resultado. (2) El job `apply` asume que las imágenes Docker del API y web ya fueron construidas y publicadas en ECR por un flujo de build separado.
+
+---
+
+## 6. Anexo uso de IA
+Esta sección documenta las consultas de diseño realizadas a una IA asistente durante la construcción de la capa de ingress, endpoints, seeders y CI/CD, detallando qué propuestas fueron aceptadas, cuáles editadas y cuáles descartadas.
+
+### Propuestas aceptadas
+
+- **Enrutamiento por path en un solo ALB:** se aceptó usar un único ALB con listener en `:80` y reglas de path (API a `/api`, `/availability`, `/reservar`, etc.; web por defecto) en lugar de dos balanceadores. Razón: una sola URL pública sirve toda la aplicación y simplifica el costo y la operación.
+- **Target groups gestionados dentro del módulo ALB:** se aceptó que el módulo ALB cree los target groups y los exponga como outputs, y que `compute` los consuma. Evita dependencias circulares (compute solo necesita el ARN, no al revés).
+- **`target_type = ip` en los target groups:** aceptado por ser el requerido para Fargate en modo `awsvpc`.
+- **Seed idempotente con `ON CONFLICT` / `WHERE NOT EXISTS`:** aceptado para permitir ejecuciones repetidas del pipeline sin fallos ni duplicados.
+
+### Propuestas editadas
+
+- **Respuesta de `POST /reservar`:** la implementación original subía el comprobante a S3 de forma totalmente asíncrona y no devolvía la Key en el 201. Se editó la propuesta para calcular la Key de forma determinista antes del bloque asíncrono e incluirla en la respuesta, cumpliendo la especificación sin bloquear la subida del PDF.
+- **Health check del target group web:** se editó el matcher a `200-399` (en vez de solo `200`), porque la raíz de Next.js responde `307 → /login`; sin ese ajuste el target nunca se reportaría `Healthy`.
+- **Disparo del Apply-on-Merge:** se evaluaron dos triggers. Se editó la propuesta inicial (`push` a `main`) hacia `pull_request closed + merged == true`, por ser literal a la especificación ("única y exclusivamente cuando el PR sea fusionado") y reforzar la disciplina de PRs.
+
+### Propuestas descartadas
+
+- **Seed vía `null_resource` en Terraform:** descartado. Mezclar ejecución de datos en el ciclo de vida de la infraestructura es un anti-patrón, y además el runner no alcanza la RDS privada por red.
+- **Hacer la RDS accesible temporalmente para sembrar desde el runner:** descartado por violar el aislamiento de subred privada (que la propia especificación exige) y el espíritu de la regla de "no usar terminales externas". En su lugar se adoptó `aws ecs run-task` dentro de la VPC.
