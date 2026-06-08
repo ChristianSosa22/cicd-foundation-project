@@ -2,7 +2,6 @@
 # Extracto del 'terraform plan' (terraform plan -var-file=envs/dev/dev.tfvars)
 # Muestra la creacion de los 4 security groups (web/ALB, app, web_service, db)
 # y las 13 reglas encadenadas (web -> app -> db) del modulo security.
-# Generado: Sun Jun  7 21:56:03 CST 2026
 
   # module.security.aws_security_group.app will be created
   + resource "aws_security_group" "app" {
