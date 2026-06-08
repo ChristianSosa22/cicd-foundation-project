@@ -1,12 +1,289 @@
-# Security Groups Plan Evidence
-# Run `terraform plan -var-file=envs/dev/dev.tfvars -no-color` from infra/
-# and pipeline the output here to show the created security group rules.
-#
-# Expected resources:
-# - module.security.aws_security_group.web (web-sg)
-# - module.security.aws_security_group.app (app-sg)
-# - module.security.aws_security_group.web_service (web-service-sg)
-# - module.security.aws_security_group.db (db-sg)
-# - module.security.aws_security_group_rule.* (all rules)
-#
-# Replace this placeholder with the actual `terraform plan` output.
+# Evidencia: Security Groups encadenados y sus reglas
+# Extracto del 'terraform plan' (terraform plan -var-file=envs/dev/dev.tfvars)
+# Muestra la creacion de los 4 security groups (web/ALB, app, web_service, db)
+# y las 13 reglas encadenadas (web -> app -> db) del modulo security.
+# Generado: Sun Jun  7 21:56:03 CST 2026
+
+  # module.security.aws_security_group.app will be created
+  + resource "aws_security_group" "app" {
+      + arn                    = (known after apply)
+      + description            = "App tier: ingress from web-sg on app port, egress to db-sg"
+      + egress                 = (known after apply)
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "oyd-project-dev-app-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-app-sg"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all               = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-app-sg"
+          + "Project"     = "oyd-project"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.security.aws_security_group.db will be created
+  + resource "aws_security_group" "db" {
+      + arn                    = (known after apply)
+      + description            = "DB tier: PostgreSQL ingress from app-sg only. No internet egress."
+      + egress                 = (known after apply)
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "oyd-project-dev-db-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-db-sg"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all               = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-db-sg"
+          + "Project"     = "oyd-project"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.security.aws_security_group.web will be created
+  + resource "aws_security_group" "web" {
+      + arn                    = (known after apply)
+      + description            = "Web/ALB tier: HTTP/HTTPS from internet, egress to app tier"
+      + egress                 = (known after apply)
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "oyd-project-dev-web-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-web-sg"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all               = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-web-sg"
+          + "Project"     = "oyd-project"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.security.aws_security_group.web_service will be created
+  + resource "aws_security_group" "web_service" {
+      + arn                    = (known after apply)
+      + description            = "Web service tier: ingress from web-sg on web port, egress to app-sg"
+      + egress                 = (known after apply)
+      + id                     = (known after apply)
+      + ingress                = (known after apply)
+      + name                   = "oyd-project-dev-web-service-sg"
+      + name_prefix            = (known after apply)
+      + owner_id               = (known after apply)
+      + revoke_rules_on_delete = false
+      + tags                   = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-web-service-sg"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all               = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Name"        = "oyd-project-dev-web-service-sg"
+          + "Project"     = "oyd-project"
+        }
+      + vpc_id                 = (known after apply)
+    }
+
+  # module.security.aws_security_group_rule.app_egress_db will be created
+  + resource "aws_security_group_rule" "app_egress_db" {
+      + description              = "Egress to RDS on DB port"
+      + from_port                = 5432
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 5432
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.app_egress_internet will be created
+  + resource "aws_security_group_rule" "app_egress_internet" {
+      + cidr_blocks              = [
+          + "0.0.0.0/0",
+        ]
+      + description              = "All outbound: ECR pull, CloudWatch, S3 via NAT"
+      + from_port                = 0
+      + id                       = (known after apply)
+      + protocol                 = "-1"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 0
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.app_ingress_from_web will be created
+  + resource "aws_security_group_rule" "app_ingress_from_web" {
+      + description              = "Ingress from web-sg on app port"
+      + from_port                = 8080
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 8080
+      + type                     = "ingress"
+    }
+
+  # module.security.aws_security_group_rule.app_ingress_from_web_service will be created
+  + resource "aws_security_group_rule" "app_ingress_from_web_service" {
+      + description              = "Ingress from web service on app port"
+      + from_port                = 8080
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 8080
+      + type                     = "ingress"
+    }
+
+  # module.security.aws_security_group_rule.db_ingress_from_app will be created
+  + resource "aws_security_group_rule" "db_ingress_from_app" {
+      + description              = "Ingress from app-sg on DB port"
+      + from_port                = 5432
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 5432
+      + type                     = "ingress"
+    }
+
+  # module.security.aws_security_group_rule.web_egress_app will be created
+  + resource "aws_security_group_rule" "web_egress_app" {
+      + description              = "Egress to API on app port"
+      + from_port                = 8080
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 8080
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.web_egress_web_service will be created
+  + resource "aws_security_group_rule" "web_egress_web_service" {
+      + description              = "Egress to web service on web port"
+      + from_port                = 3000
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 3000
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.web_ingress_http will be created
+  + resource "aws_security_group_rule" "web_ingress_http" {
+      + cidr_blocks              = [
+          + "0.0.0.0/0",
+        ]
+      + description              = "HTTP from internet"
+      + from_port                = 80
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 80
+      + type                     = "ingress"
+    }
+
+  # module.security.aws_security_group_rule.web_ingress_https will be created
+  + resource "aws_security_group_rule" "web_ingress_https" {
+      + cidr_blocks              = [
+          + "0.0.0.0/0",
+        ]
+      + description              = "HTTPS from internet"
+      + from_port                = 443
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 443
+      + type                     = "ingress"
+    }
+
+  # module.security.aws_security_group_rule.web_service_egress_app will be created
+  + resource "aws_security_group_rule" "web_service_egress_app" {
+      + description              = "Egress to API on app port for internal calls"
+      + from_port                = 8080
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 8080
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.web_service_egress_internet will be created
+  + resource "aws_security_group_rule" "web_service_egress_internet" {
+      + cidr_blocks              = [
+          + "0.0.0.0/0",
+        ]
+      + description              = "All outbound: ECR pull, CloudWatch, S3 via NAT"
+      + from_port                = 0
+      + id                       = (known after apply)
+      + protocol                 = "-1"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 0
+      + type                     = "egress"
+    }
+
+  # module.security.aws_security_group_rule.web_service_ingress_from_web will be created
+  + resource "aws_security_group_rule" "web_service_ingress_from_web" {
+      + description              = "Ingress from web-sg on web port"
+      + from_port                = 3000
+      + id                       = (known after apply)
+      + protocol                 = "tcp"
+      + security_group_id        = (known after apply)
+      + security_group_rule_id   = (known after apply)
+      + self                     = false
+      + source_security_group_id = (known after apply)
+      + to_port                  = 3000
+      + type                     = "ingress"
+    }
