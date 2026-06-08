@@ -28,12 +28,4 @@ output "web_service_name" {
   value       = aws_ecs_service.web.name
 }
 
-output "api_security_group_id" {
-  description = "Security group ID for the API service. Use this as the ingress source on the RDS security group and as the target SG for the ALB target group."
-  value       = aws_security_group.api.id
-}
 
-output "web_security_group_id" {
-  description = "Security group ID for the web service. Use this as the target SG for the ALB target group in the follow-up task."
-  value       = aws_security_group.web.id
-}

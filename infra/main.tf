@@ -1,6 +1,5 @@
-# Module call order: network → ecr → storage → database → secrets → compute.
-# Secrets depend on the DB endpoint (for DATABASE_URL documentation).
-# Compute depends on ECR URLs, SSM ARNs, private app subnet IDs, and the receipts bucket.
+# Module call order: network → security → ecr → storage → database → secrets → compute.
+# Compute depends on ECR URLs, SSM ARNs, private app subnet IDs, SG IDs, and the receipts bucket.
 
 module "network" {
   source = "./modules/network"
@@ -13,6 +12,19 @@ module "network" {
   private_app_subnet_cidrs  = var.private_app_subnet_cidrs
   private_data_subnet_cidrs = var.private_data_subnet_cidrs
   single_nat_gateway        = var.single_nat_gateway
+}
+
+module "security" {
+  source = "./modules/security"
+
+  name        = var.project_name
+  environment = var.environment
+  vpc_id      = module.network.vpc_id
+  app_port    = var.app_port
+  web_port    = var.web_port
+  db_port     = var.db_port
+
+  depends_on = [module.network]
 }
 
 module "ecr" {
@@ -32,23 +44,22 @@ module "storage" {
 module "database" {
   source = "./modules/database"
 
-  environment                = var.environment
-  project_name               = var.project_name
-  db_name                    = var.db_name
-  db_username                = var.db_username
-  db_password                = var.db_password
-  db_port                    = var.db_port
-  db_instance_class          = var.db_instance_class
-  db_allocated_storage       = var.db_allocated_storage
-  db_engine_version          = var.db_engine_version
-  multi_az                   = var.multi_az
-  skip_final_snapshot        = var.skip_final_snapshot
-  deletion_protection        = var.deletion_protection
-  vpc_id                     = module.network.vpc_id
-  subnet_ids                 = module.network.private_data_subnet_ids
-  ingress_security_group_ids = [module.compute.api_security_group_id]
+  environment          = var.environment
+  project_name         = var.project_name
+  db_name              = var.db_name
+  db_username          = var.db_username
+  db_password          = var.db_password
+  db_port              = var.db_port
+  db_instance_class    = var.db_instance_class
+  db_allocated_storage = var.db_allocated_storage
+  db_engine_version    = var.db_engine_version
+  multi_az             = var.multi_az
+  skip_final_snapshot  = var.skip_final_snapshot
+  deletion_protection  = var.deletion_protection
+  subnet_ids           = module.network.private_data_subnet_ids
+  db_security_group_id = module.security.db_security_group_id
 
-  depends_on = [module.network]
+  depends_on = [module.network, module.security]
 }
 
 module "secrets" {
@@ -61,11 +72,12 @@ module "secrets" {
 module "compute" {
   source = "./modules/compute"
 
-  environment        = var.environment
-  name               = var.project_name
-  region             = var.region
-  vpc_id             = module.network.vpc_id
-  private_subnet_ids = module.network.private_app_subnet_ids
+  environment                   = var.environment
+  name                          = var.project_name
+  region                        = var.region
+  private_subnet_ids            = module.network.private_app_subnet_ids
+  api_security_group_id         = module.security.app_security_group_id
+  web_service_security_group_id = module.security.web_service_security_group_id
 
   # Image URIs: ECR repo URL + configurable tag
   api_image = "${module.ecr.api_repository_url}:${var.api_image_tag}"
@@ -87,5 +99,5 @@ module "compute" {
   # IAM: scope the API task role to the receipts bucket
   receipts_bucket_arn = module.storage.bucket_arn
 
-  depends_on = [module.network, module.ecr, module.secrets]
+  depends_on = [module.network, module.security, module.ecr, module.secrets]
 }

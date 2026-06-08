@@ -148,3 +148,17 @@ variable "web_memory" {
   type        = number
   default     = 512
 }
+
+# ── Security module ───────────────────────────────────────────────────────────
+
+variable "app_port" {
+  description = "Port that the API application container listens on."
+  type        = number
+  default     = 8080
+}
+
+variable "web_port" {
+  description = "Port that the web frontend container listens on."
+  type        = number
+  default     = 3000
+}

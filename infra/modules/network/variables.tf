@@ -39,3 +39,47 @@ variable "single_nat_gateway" {
   type        = bool
   default     = true
 }
+
+# ── NACL / port variables ───────────────────────────────────────────────────┐
+
+variable "http_port" {
+  description = "HTTP port for NACL rules. Used to allow ALB inbound and outbound HTTP traffic."
+  type        = number
+  default     = 80
+}
+
+variable "https_port" {
+  description = "HTTPS port for NACL rules. Used to allow ALB inbound and outbound HTTPS traffic."
+  type        = number
+  default     = 443
+}
+
+variable "app_port" {
+  description = "API application port for NACL rules. Used to allow traffic between ALB and API tasks."
+  type        = number
+  default     = 8080
+}
+
+variable "web_port" {
+  description = "Web frontend port for NACL rules. Used to allow traffic between ALB and web tasks."
+  type        = number
+  default     = 3000
+}
+
+variable "db_port" {
+  description = "Database port for NACL rules. Used to allow API-to-RDS traffic."
+  type        = number
+  default     = 5432
+}
+
+variable "ephemeral_from" {
+  description = "Start of ephemeral port range for NACL rules. Required for return traffic in stateless ACLs."
+  type        = number
+  default     = 1024
+}
+
+variable "ephemeral_to" {
+  description = "End of ephemeral port range for NACL rules."
+  type        = number
+  default     = 65535
+}

@@ -27,3 +27,13 @@ output "nat_gateway_ids" {
   description = "List of NAT Gateway IDs. Length is 1 when single_nat_gateway=true, or az_count when single_nat_gateway=false."
   value       = aws_nat_gateway.this[*].id
 }
+
+output "public_nacl_id" {
+  description = "ID of the public subnet Network ACL."
+  value       = aws_network_acl.public.id
+}
+
+output "private_nacl_id" {
+  description = "ID of the private subnet Network ACL."
+  value       = aws_network_acl.private.id
+}

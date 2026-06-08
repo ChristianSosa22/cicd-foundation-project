@@ -14,11 +14,6 @@ variable "region" {
   default     = "us-east-1"
 }
 
-variable "vpc_id" {
-  description = "ID of the VPC in which ECS task security groups are created. Must be the custom VPC provisioned by the network module."
-  type        = string
-}
-
 variable "private_subnet_ids" {
   description = "List of private subnet IDs where Fargate tasks are placed. Tasks have no public IP; egress routes through the NAT Gateway."
   type        = list(string)
@@ -92,6 +87,18 @@ variable "s3_bucket" {
 variable "secret_arns" {
   description = "Map of environment variable name to SSM parameter ARN. Injected into the API task definition as 'secrets' so Fargate pulls them at container start. Required keys: DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, HMAC_KEY."
   type        = map(string)
+}
+
+# ── Security group IDs (created by security module) ───────────────────────────
+
+variable "api_security_group_id" {
+  description = "ID of the app-sg security group from the security module. Attached to the API ECS service."
+  type        = string
+}
+
+variable "web_service_security_group_id" {
+  description = "ID of the web-service-sg security group from the security module. Attached to the web ECS service."
+  type        = string
 }
 
 # ── IAM: S3 receipts access ───────────────────────────────────────────────────

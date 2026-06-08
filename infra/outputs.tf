@@ -25,6 +25,16 @@ output "nat_gateway_ids" {
   value       = module.network.nat_gateway_ids
 }
 
+output "public_nacl_id" {
+  description = "ID of the public subnet Network ACL. Use this to verify NACL rules."
+  value       = module.network.public_nacl_id
+}
+
+output "private_nacl_id" {
+  description = "ID of the private subnet Network ACL. Use this to verify NACL rules."
+  value       = module.network.private_nacl_id
+}
+
 # ── Registry ──────────────────────────────────────────────────────────────────
 
 output "ecr_api_repository_url" {
@@ -66,14 +76,24 @@ output "ecs_web_service_name" {
   value       = module.compute.web_service_name
 }
 
-output "ecs_api_security_group_id" {
-  description = "Security group ID for the API service. Used as the ingress source on the RDS SG and the ALB target SG."
-  value       = module.compute.api_security_group_id
+output "web_security_group_id" {
+  description = "Security group ID for the web/ALB tier (public-facing). Attach to the ALB when provisioning ingress."
+  value       = module.security.web_security_group_id
 }
 
-output "ecs_web_security_group_id" {
-  description = "Security group ID for the web service. Used as the ALB target SG."
-  value       = module.compute.web_security_group_id
+output "app_security_group_id" {
+  description = "Security group ID for the application tier (API service)."
+  value       = module.security.app_security_group_id
+}
+
+output "web_service_security_group_id" {
+  description = "Security group ID for the web service tier (Next.js)."
+  value       = module.security.web_service_security_group_id
+}
+
+output "db_security_group_id" {
+  description = "Security group ID for the database tier (RDS)."
+  value       = module.security.db_security_group_id
 }
 
 # ── Database ──────────────────────────────────────────────────────────────────
