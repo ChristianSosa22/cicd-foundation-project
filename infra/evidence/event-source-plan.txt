@@ -1,0 +1,17 @@
+=== Delivery 4 — Deliverable B: Event-Driven Compute (worker, VPC track) ===
+=== terraform plan excerpt — async worker resources consuming module.async_receipt outputs ===
+
+[1m  # module.compute.aws_cloudwatch_log_group.worker[0m will be created
+[1m  # module.compute.aws_ecs_service.worker[0m will be created
+[1m  # module.compute.aws_ecs_task_definition.worker[0m will be created
+[1m  # module.compute.aws_iam_role.worker_task[0m will be created
+[1m  # module.compute.aws_iam_role_policy.worker_s3[0m will be created
+[1m  # module.compute.aws_iam_role_policy.worker_sqs[0m will be created
+
+--- IAM scoping (no wildcards) ---
+SQS policy Resource:  arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-queue
+S3  policy Resource:  arn:aws:s3:::oyd-project-receipts-dev/*
+
+Plan summary:
+Plan: 6 to add, 1 to change, 0 to destroy.
+

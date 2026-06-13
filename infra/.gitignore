@@ -12,7 +12,7 @@
 !envs/dev/dev.tfvars
 !envs/staging/staging.tfvars
 # Saved plan output — binary, can contain sensitive data
-tfplan
+tfplan*
 
 # Crash logs from Terraform itself
 crash.log
