@@ -1,0 +1,29 @@
+output "alb_arn" {
+  description = "ARN of the Application Load Balancer."
+  value       = aws_lb.this.arn
+}
+
+output "alb_dns_name" {
+  description = "Public DNS name of the ALB. This is the entry point for the whole application; hit http://<this> to reach the web frontend and /api, /availability, /reservar for the backend."
+  value       = aws_lb.this.dns_name
+}
+
+output "alb_url" {
+  description = "Convenience HTTP URL of the ALB (http://<dns_name>). Use this in curl evidence and as the public base URL."
+  value       = "http://${aws_lb.this.dns_name}"
+}
+
+output "alb_zone_id" {
+  description = "Canonical hosted zone ID of the ALB. Use this to create a Route 53 alias record in a future iteration."
+  value       = aws_lb.this.zone_id
+}
+
+output "api_target_group_arn" {
+  description = "ARN of the API target group. Wire this into the API ECS service's load_balancer block so Fargate registers task IPs."
+  value       = aws_lb_target_group.api.arn
+}
+
+output "web_target_group_arn" {
+  description = "ARN of the web target group. Wire this into the web ECS service's load_balancer block so Fargate registers task IPs."
+  value       = aws_lb_target_group.web.arn
+}

@@ -163,6 +163,15 @@ variable "web_port" {
   default     = 3000
 }
 
+
+# ── ALB module ────────────────────────────────────────────────────────────────
+
+variable "health_check_path" {
+  description = "Path used by the ALB target group health check for the web service. Defaults to '/' per the delivery spec. The API target group uses a dedicated /health path internally."
+  type        = string
+  default     = "/"
+}
+
 # ── Async messaging module ────────────────────────────────────────────────────
 
 variable "max_receive_count" {

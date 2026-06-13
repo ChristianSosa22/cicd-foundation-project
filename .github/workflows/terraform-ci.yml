@@ -2,20 +2,20 @@ name: Terraform CI - OyD
 
 on:
   pull_request:
-    branches: # Workflow that runs on every pull request targeting the main branch
+    # Plan runs on PRs opened/updated against main; apply runs when a PR is merged (closed).
+    types: [opened, synchronize, reopened, closed]
+    branches:
       - main
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true #Node.js 20 actions are deprecated. This forces all actions to use Node.js 24, which is the latest supported version.
-<<<<<<< HEAD
-  env:
-=======
-  # Uncomment the following line to pass the database password securely
->>>>>>> refs/remotes/origin/main
+  # Database password is injected securely from GitHub Secrets (never hardcoded)
   TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
 jobs:
-  terraform:
+  plan:
+    # Runs on PRs that are opened, updated, or reopened — but NOT on merge/close.
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -66,3 +66,60 @@ jobs:
               issue_number: context.issue.number,
               body: `<details><summary>Terraform Plan</summary>\n\n\`\`\`\n${plan}\n\`\`\`\n</details>`
             });
+  apply:
+    # Runs ONLY when a pull request is merged into main (closed + merged == true).
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    defaults:
+      run:
+        working-directory: ./infra
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.8"
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Apply
+        run: terraform apply -auto-approve -input=false -var-file=envs/dev/dev.tfvars
+
+      - name: Seed database (ECS run-task inside the VPC)
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+        run: |
+          # RDS is in a private subnet and unreachable from the runner, so the
+          # seed runs as a one-off ECS task INSIDE the VPC, where the API task's
+          # SG is allowed to reach the DB. The task overrides the container
+          # command to run the idempotent seed script.
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          SERVICE=$(terraform output -raw ecs_api_service_name)
+          SG=$(terraform output -raw app_security_group_id)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
+
+          # Resolve the task definition currently used by the API service
+          TASKDEF=$(aws ecs describe-services \
+            --cluster "$CLUSTER" --services "$SERVICE" \
+            --query 'services[0].taskDefinition' --output text)
+
+          echo "Launching seed task on $CLUSTER using $TASKDEF"
+
+          aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASKDEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:seed"]}]}'

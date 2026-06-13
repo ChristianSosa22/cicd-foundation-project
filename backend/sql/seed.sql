@@ -19,7 +19,7 @@ INSERT INTO users (email, password_hash, full_name, system_role, category) VALUE
    '$2a$12$3sL9eTTIuHR91B092btJ8uA3tLDw9.bbmppHw.7.wDJ03C1q55zn6',
    'Ana Ejecutivo',
    'driver',
-   'ejecutivo'),admin@parking.test
+   'ejecutivo'),
   ('driver.operativo@parking.test',
    '$2a$12$cmiSJQy2DUWhDUE64T49auLm9hiI2Owz/Xwk1/06lAJefMn1hEIFK',
    'Bruno Operativo',
@@ -29,7 +29,8 @@ INSERT INTO users (email, password_hash, full_name, system_role, category) VALUE
    '$2a$12$kS5sJZt7DA0kyH8w757quetGdpZ7dg4DoiOYoO7ohGyVggrnMMSNG',
    'Carla Visitante',
    'driver',
-   'visitante_frecuente');
+   'visitante_frecuente')
+ON CONFLICT (email) DO NOTHING;
 
 -- ── Parking spaces ────────────────────────────────────────────────────────────
 INSERT INTO parking_spaces (label, vehicle_type) VALUES
@@ -39,18 +40,21 @@ INSERT INTO parking_spaces (label, vehicle_type) VALUES
   ('E-004', 'moto'),
   ('E-005', 'moto'),
   ('E-006', 'camioneta'),
-  ('E-007', 'camioneta');
+  ('E-007', 'camioneta')
+ON CONFLICT (label) DO NOTHING;
 
 -- ── Allowed categories per space (Fn2) ────────────────────────────────────────
 -- E-001 (auto): ejecutivo + operativo
 INSERT INTO space_allowed_category (space_id, category)
   SELECT id, 'ejecutivo'::collaborator_category  FROM parking_spaces WHERE label = 'E-001'
   UNION ALL
-  SELECT id, 'operativo'::collaborator_category  FROM parking_spaces WHERE label = 'E-001';
+  SELECT id, 'operativo'::collaborator_category  FROM parking_spaces WHERE label = 'E-001'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-002 (auto): ejecutivo only
 INSERT INTO space_allowed_category (space_id, category)
-  SELECT id, 'ejecutivo'::collaborator_category  FROM parking_spaces WHERE label = 'E-002';
+  SELECT id, 'ejecutivo'::collaborator_category  FROM parking_spaces WHERE label = 'E-002'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-003 (auto): all three
 INSERT INTO space_allowed_category (space_id, category)
@@ -58,13 +62,15 @@ INSERT INTO space_allowed_category (space_id, category)
   UNION ALL
   SELECT id, 'operativo'::collaborator_category           FROM parking_spaces WHERE label = 'E-003'
   UNION ALL
-  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-003';
+  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-003'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-004 (moto): operativo + visitante_frecuente
 INSERT INTO space_allowed_category (space_id, category)
   SELECT id, 'operativo'::collaborator_category           FROM parking_spaces WHERE label = 'E-004'
   UNION ALL
-  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-004';
+  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-004'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-005 (moto): all three
 INSERT INTO space_allowed_category (space_id, category)
@@ -72,17 +78,20 @@ INSERT INTO space_allowed_category (space_id, category)
   UNION ALL
   SELECT id, 'operativo'::collaborator_category           FROM parking_spaces WHERE label = 'E-005'
   UNION ALL
-  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-005';
+  SELECT id, 'visitante_frecuente'::collaborator_category FROM parking_spaces WHERE label = 'E-005'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-006 (camioneta): ejecutivo only
 INSERT INTO space_allowed_category (space_id, category)
-  SELECT id, 'ejecutivo'::collaborator_category FROM parking_spaces WHERE label = 'E-006';
+  SELECT id, 'ejecutivo'::collaborator_category FROM parking_spaces WHERE label = 'E-006'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- E-007 (camioneta): ejecutivo + operativo
 INSERT INTO space_allowed_category (space_id, category)
   SELECT id, 'ejecutivo'::collaborator_category FROM parking_spaces WHERE label = 'E-007'
   UNION ALL
-  SELECT id, 'operativo'::collaborator_category FROM parking_spaces WHERE label = 'E-007';
+  SELECT id, 'operativo'::collaborator_category FROM parking_spaces WHERE label = 'E-007'
+ON CONFLICT (space_id, category) DO NOTHING;
 
 -- ── Tariffs (append-only; created_by = admin user) ────────────────────────────
 INSERT INTO tariffs (vehicle_type, price, currency, created_by)
@@ -92,11 +101,12 @@ INSERT INTO tariffs (vehicle_type, price, currency, created_by)
     ('moto',       8.00::numeric),
     ('camioneta', 20.00::numeric)
   ) AS v(vehicle_type, price)
-  CROSS JOIN (SELECT id FROM users WHERE email = 'admin@parking.test') AS u;
-
+  CROSS JOIN (SELECT id FROM users WHERE email = 'admin@parking.test') AS u
+  WHERE NOT EXISTS (SELECT 1 FROM tariffs);
 -- ── Settings (Fn5 policy defaults) ────────────────────────────────────────────
 INSERT INTO settings (key, value) VALUES
   ('cancellation_window_hours',    '24'),
-  ('max_late_cancellations_month', '3');
+  ('max_late_cancellations_month', '3')
+ON CONFLICT (key) DO NOTHING;
 
 COMMIT;
