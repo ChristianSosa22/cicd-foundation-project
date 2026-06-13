@@ -14,6 +14,8 @@ const EnvSchema = z.object({
 
   AWS_REGION: z.string().default('us-east-1'),
   S3_BUCKET: z.string().optional(),
+  // SQS queue URL for the async receipt pipeline (Delivery 4). Optional until wired.
+  RECEIPT_QUEUE_URL: z.string().optional(),
 
   // Column-level encryption (data-model.md §8). Optional until the feature is wired.
   ENCRYPTION_KEY: z.string().optional(), // base64 of 32 bytes

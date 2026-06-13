@@ -9,6 +9,7 @@ import { conflict, forbidden, notFound, unprocessable } from '../../lib/errors';
 import { logger } from '../../lib/logger';
 import { generateReceiptPdf } from '../../lib/receipts';
 import { s3 } from '../../lib/s3';
+import { enqueueReceiptMessage } from '../../lib/sqs';
 import { presignGetReceipt } from '../../lib/s3';
 import { requireAuth, requireRole } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
@@ -282,6 +283,37 @@ reservationsRouter.get(
 
       const url = await presignGetReceipt(reservation.receiptS3Key, 300);
       res.json({ url });
+    } catch (err) {
+      next(err);
+    }
+  },
+);
+
+// ── Delivery 4: async producer ────────────────────────────────────────────────
+// POST /reservas/enqueue — accepts a JSON reservation-intent payload, puts it on
+// the receipt SQS queue, and returns 202 with the SQS-assigned MessageId.
+// Access control is network-level: reachable only through the D3 ALB ingress,
+// never via the task's private IP. The async worker (Deliverable B) consumes the
+// message and writes the receipt object to S3.
+export const reservasRouter: Router = Router();
+reservasRouter.post(
+  '/enqueue',
+  validate({
+    body: z.object({
+      space_id: z.number().int().positive().optional(),
+      vehicle_id: z.number().int().positive().optional(),
+      reservation_date: dateString.optional(),
+    }).passthrough(),
+  }),
+  async (req, res, next) => {
+    try {
+      const messageId = await enqueueReceiptMessage({
+        type: 'ReservationEnqueued',
+        payload: req.body,
+        enqueued_at: new Date().toISOString(),
+      });
+      logger.info({ messageId }, '[enqueue] message accepted onto receipt queue');
+      res.status(202).json({ message_id: messageId, status: 'accepted' });
     } catch (err) {
       next(err);
     }

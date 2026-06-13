@@ -152,7 +152,15 @@ module "compute" {
   api_target_group_arn = module.alb.api_target_group_arn
   web_target_group_arn = module.alb.web_target_group_arn
 
-  depends_on = [module.network, module.security, module.ecr, module.secrets, module.alb]
+
+  # Async worker (SQS consumer) — Delivery 4. Wired from the async_receipt queue
+  # and the app security group (same network profile as the API).
+  worker_security_group_id = module.security.app_security_group_id
+  sqs_queue_url            = module.async_receipt.queue_url
+  sqs_queue_arn            = module.async_receipt.queue_arn
+  worker_desired_count     = var.worker_desired_count
+  polling_batch_size       = var.polling_batch_size
+  depends_on               = [module.network, module.security, module.ecr, module.secrets, module.alb]
 }
 
 module "alb" {

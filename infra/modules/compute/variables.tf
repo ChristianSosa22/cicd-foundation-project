@@ -119,3 +119,43 @@ variable "web_target_group_arn" {
   description = "ARN of the ALB target group for the web service. The web ECS service registers its task IPs here via its load_balancer block."
   type        = string
 }
+# ── Worker service (async SQS consumer — Delivery 4) ──────────────────────────
+
+variable "worker_cpu" {
+  description = "CPU units for the async worker Fargate task. Valid values: 256, 512, 1024, 2048, 4096."
+  type        = number
+  default     = 256
+}
+
+variable "worker_memory" {
+  description = "Memory in MB for the async worker Fargate task. Must be compatible with worker_cpu (see AWS Fargate task size table)."
+  type        = number
+  default     = 512
+}
+
+variable "worker_desired_count" {
+  description = "Desired number of running async worker task instances. Set to 0 to stop polling without destroying the service; 1 keeps a single consumer polling the receipt queue."
+  type        = number
+  default     = 1
+}
+
+variable "worker_security_group_id" {
+  description = "ID of the security group attached to the async worker ECS service. The worker only needs egress (to SQS, S3, and the DB); it exposes no inbound ports."
+  type        = string
+}
+
+variable "sqs_queue_url" {
+  description = "URL of the receipt SQS queue (from the async module output queue_url). Injected into the worker container as RECEIPT_QUEUE_URL so the consumer knows which queue to poll. No hardcoded value."
+  type        = string
+}
+
+variable "sqs_queue_arn" {
+  description = "ARN of the receipt SQS queue (from the async module output queue_arn). Used to scope the worker task role's sqs:ReceiveMessage/DeleteMessage/GetQueueAttributes permissions to this specific queue — no wildcard."
+  type        = string
+}
+
+variable "polling_batch_size" {
+  description = "Maximum number of messages the worker requests per SQS ReceiveMessage call (1-10). Injected as POLLING_BATCH_SIZE. Higher values improve throughput; lower values reduce per-message latency."
+  type        = number
+  default     = 10
+}

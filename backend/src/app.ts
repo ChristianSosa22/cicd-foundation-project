@@ -11,7 +11,7 @@ import { authRouter } from './modules/auth/auth.routes';
 import { availabilityRouter } from './modules/availability/availability.routes';
 import { healthRouter } from './modules/health/health.routes';
 import { meRouter } from './modules/me/me.routes';
-import { reservarRouter, reservationsRouter } from './modules/reservations/reservations.routes';
+import { reservarRouter, reservasRouter, reservationsRouter } from './modules/reservations/reservations.routes';
 import { tariffsRouter } from './modules/tariffs/tariffs.routes';
 
 // Builds the Express app without listening — reused by server.ts and tests.
@@ -33,6 +33,7 @@ export function buildApp(): Express {
   app.use('/tariffs', tariffsRouter);
   app.use('/me', meRouter);
   app.use('/reservar', reservarRouter);
+  app.use('/reservas', reservasRouter);
   app.use('/reservations', reservationsRouter);
   app.use('/admin', adminRouter);
 
