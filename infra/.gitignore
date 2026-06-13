@@ -10,7 +10,7 @@
 # Variable values files — may contain secrets; allow only the dev environment file used by CI
 *.tfvars
 !envs/dev/dev.tfvars
-!envs/dev/staging.tfvars
+!envs/staging/staging.tfvars
 # Saved plan output — binary, can contain sensitive data
 tfplan
 
