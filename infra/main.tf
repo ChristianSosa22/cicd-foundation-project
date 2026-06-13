@@ -1,5 +1,6 @@
-# Module call order: network → security → ecr → storage → database → secrets → compute.
+# Module call order: network → security → ecr → storage → database → secrets → async → scheduler → compute.
 # Compute depends on ECR URLs, SSM ARNs, private app subnet IDs, SG IDs, and the receipts bucket.
+# Scheduler depends on async (release-queue ARN). Compute will later depend on async outputs for event source mappings.
 
 module "network" {
   source = "./modules/network"
@@ -67,6 +68,53 @@ module "secrets" {
 
   name        = var.project_name
   environment = var.environment
+}
+
+module "async_receipt" {
+  source = "./modules/async"
+
+  name                          = var.project_name
+  environment                   = var.environment
+  queue_name_prefix             = "${var.project_name}-${var.environment}-receipt"
+  visibility_timeout_seconds    = var.receipt_visibility_timeout_seconds
+  message_retention_seconds     = var.receipt_message_retention_seconds
+  max_receive_count             = var.max_receive_count
+  dlq_message_retention_seconds = var.dlq_message_retention_seconds
+}
+
+module "async_release" {
+  source = "./modules/async"
+
+  name                          = var.project_name
+  environment                   = var.environment
+  queue_name_prefix             = "${var.project_name}-${var.environment}-release"
+  visibility_timeout_seconds    = var.release_visibility_timeout_seconds
+  message_retention_seconds     = var.release_message_retention_seconds
+  max_receive_count             = var.max_receive_count
+  dlq_message_retention_seconds = var.dlq_message_retention_seconds
+}
+
+module "async_email" {
+  source = "./modules/async"
+
+  name                          = var.project_name
+  environment                   = var.environment
+  queue_name_prefix             = "${var.project_name}-${var.environment}-receipt-email"
+  visibility_timeout_seconds    = var.email_visibility_timeout_seconds
+  message_retention_seconds     = var.email_message_retention_seconds
+  max_receive_count             = var.max_receive_count
+  dlq_message_retention_seconds = var.dlq_message_retention_seconds
+}
+
+module "scheduler" {
+  source = "./modules/scheduler"
+
+  name                = var.project_name
+  environment         = var.environment
+  schedule_expression = var.schedule_expression
+  scheduler_timezone  = var.scheduler_timezone
+  target_queue_arn    = module.async_release.queue_arn
+  target_message      = var.scheduler_target_message
 }
 
 module "compute" {

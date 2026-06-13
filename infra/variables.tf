@@ -162,3 +162,73 @@ variable "web_port" {
   type        = number
   default     = 3000
 }
+
+# ── Async messaging module ────────────────────────────────────────────────────
+
+variable "max_receive_count" {
+  description = "Maximum number of times a message can be received before being moved to the DLQ. Shared across all three async flows (receipt, release, email). A value of 3 absorbs transient failures without excessive retries."
+  type        = number
+  default     = 3
+}
+
+variable "dlq_message_retention_seconds" {
+  description = "Retention period for messages in all DLQs (seconds). Should be long enough to allow manual inspection and redrive. Example: 1209600 (14 days)."
+  type        = number
+  default     = 1209600
+}
+
+variable "receipt_visibility_timeout_seconds" {
+  description = "Visibility timeout for the receipt queue (seconds). Must exceed the expected PDF generation + S3 upload time. Example: 60."
+  type        = number
+  default     = 60
+}
+
+variable "receipt_message_retention_seconds" {
+  description = "Message retention for the receipt queue (seconds). Example: 345600 (4 days)."
+  type        = number
+  default     = 345600
+}
+
+variable "release_visibility_timeout_seconds" {
+  description = "Visibility timeout for the release queue (seconds). The release-worker runs a batch UPDATE; 30s is sufficient. Example: 30."
+  type        = number
+  default     = 30
+}
+
+variable "release_message_retention_seconds" {
+  description = "Message retention for the release queue (seconds). Example: 345600 (4 days)."
+  type        = number
+  default     = 345600
+}
+
+variable "email_visibility_timeout_seconds" {
+  description = "Visibility timeout for the email queue (seconds). Must exceed the expected email API call time. Example: 30."
+  type        = number
+  default     = 30
+}
+
+variable "email_message_retention_seconds" {
+  description = "Message retention for the email queue (seconds). Example: 345600 (4 days)."
+  type        = number
+  default     = 345600
+}
+
+# ── Scheduler module ──────────────────────────────────────────────────────────
+
+variable "schedule_expression" {
+  description = "EventBridge Scheduler expression for the expired-reservation sweep. Accepts cron or rate expressions. Example: 'rate(20 minutes)'."
+  type        = string
+  default     = "rate(20 minutes)"
+}
+
+variable "scheduler_timezone" {
+  description = "IANA timezone for the scheduler. Determines when cron-based schedules fire relative to local time. Example: 'America/Guatemala'."
+  type        = string
+  default     = "America/Guatemala"
+}
+
+variable "scheduler_target_message" {
+  description = "JSON message body sent to the release-queue on each scheduled invocation. Conforms to the ReleaseExpiredReservationCommand payload contract."
+  type        = string
+  default     = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"
+}

@@ -35,3 +35,22 @@ api_cpu       = 256
 api_memory    = 512
 web_cpu       = 256
 web_memory    = 512
+
+# ── Async Messaging ───────────────────────────────────────────────────────────
+# Dev uses shorter retention to reduce SQS storage costs; messages older than
+# 4 days are discarded. max_receive_count=3 absorbs transient failures.
+max_receive_count                  = 3
+dlq_message_retention_seconds      = 1209600 # 14 days — long enough for manual redrive
+receipt_visibility_timeout_seconds = 60      # PDF generation + S3 upload
+receipt_message_retention_seconds  = 345600  # 4 days
+release_visibility_timeout_seconds = 30      # batch UPDATE is fast
+release_message_retention_seconds  = 345600  # 4 days
+email_visibility_timeout_seconds   = 30      # email API call
+email_message_retention_seconds    = 345600  # 4 days
+
+# ── Scheduler ─────────────────────────────────────────────────────────────────
+# Sweeps expired reservations every 20 minutes. Timezone set to Guatemala (CST)
+# to align cron evaluation with local business hours.
+schedule_expression      = "rate(20 minutes)"
+scheduler_timezone       = "America/Guatemala"
+scheduler_target_message = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"

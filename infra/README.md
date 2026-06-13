@@ -238,3 +238,35 @@ storage_bucket_name         = "oyd-dev"
 ```
 
 El archivo completo se encuentra en [`evidence/network-foundation.txt`](evidence/network-foundation.txt).
+
+### Async Messaging Foundation: `terraform output`
+
+El siguiente output fue capturado con `terraform output` desde `infra/` tras ejecutar `terraform apply -var-file=envs/dev/dev.tfvars`. Refleja las colas SQS y sus DLQs aprovisionadas por el módulo `infra/modules/async/`:
+
+```
+email_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-email-dlq"
+email_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-dlq"
+email_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-email-queue"
+email_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-queue"
+receipt_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-dlq"
+receipt_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-dlq"
+receipt_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-queue"
+receipt_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-queue"
+release_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-release-dlq"
+release_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-dlq"
+release_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-release-queue"
+release_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-queue"
+```
+
+El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).
+
+### Scheduler: EventBridge Release Sweep
+
+El EventBridge Scheduler `oyd-project-dev-release-expired` dispara un `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release-queue`. El IAM role del scheduler tiene `sqs:SendMessage` scoped exclusivamente al ARN de la release-queue (sin wildcard).
+
+```
+scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-scheduler-role"
+scheduler_schedule_name = "oyd-project-dev-release-expired"
+```
+
+El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).

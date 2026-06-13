@@ -1,0 +1,726 @@
+pablo@MSI MINGW64 ~/OneDrive/Documentos/Projs&Labs/OyD-Course/cicd-foundation-project/infra (main)
+$ terraform plan -var-file=envs/dev/dev.tfvars -out=tfplan
+
+module.secrets.aws_ssm_parameter.database_url: Refreshing state... [id=/oyd-project/dev/DATABASE_URL]
+module.network.aws_vpc.this: Refreshing state... [id=vpc-013a3f24358015fd7]
+module.storage.aws_s3_bucket.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.alb.aws_lb_listener.http: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669]
+module.alb.aws_lb.this: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203]
+module.alb.aws_lb_listener_rule.api: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener-rule/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669/8c533da0725dad21]
+module.alb.aws_lb_target_group.web: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11]
+module.alb.aws_lb_target_group.api: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788]
+module.network.data.aws_availability_zones.available: Reading...
+module.secrets.aws_ssm_parameter.jwt_secret: Refreshing state... [id=/oyd-project/dev/JWT_SECRET]
+module.network.data.aws_availability_zones.available: Read complete after 1s [id=us-east-1]
+module.ecr.aws_ecr_repository.web: Refreshing state... [id=oyd-project-web]
+module.secrets.aws_ssm_parameter.encryption_key: Refreshing state... [id=/oyd-project/dev/ENCRYPTION_KEY]
+module.ecr.aws_ecr_repository.api: Refreshing state... [id=oyd-project-api]
+module.secrets.aws_ssm_parameter.hmac_key: Refreshing state... [id=/oyd-project/dev/HMAC_KEY]
+module.ecr.aws_ecr_lifecycle_policy.web: Refreshing state... [id=oyd-project-web]
+module.ecr.aws_ecr_lifecycle_policy.api: Refreshing state... [id=oyd-project-api]
+module.network.aws_internet_gateway.this: Refreshing state... [id=igw-04912ae43d89c54ff]
+module.network.aws_subnet.private_app[1]: Refreshing state... [id=subnet-07d19bb6d0384d294]
+module.network.aws_route_table.data: Refreshing state... [id=rtb-0f93cc0ce753dd1af]
+module.network.aws_subnet.private_app[0]: Refreshing state... [id=subnet-08f379fe2e4bed817]
+module.network.aws_route_table.public: Refreshing state... [id=rtb-0637ddc3e0454fc00]
+module.network.aws_route_table.private[0]: Refreshing state... [id=rtb-0b5c5e07d29f2f7d5]
+module.network.aws_subnet.private_data[1]: Refreshing state... [id=subnet-06b996a5d99a9c0f6]
+module.network.aws_network_acl.public: Refreshing state... [id=acl-064586bdb9e8440ac]
+module.network.aws_network_acl.private: Refreshing state... [id=acl-0d31bd23c57b330a3]
+module.network.aws_subnet.private_data[0]: Refreshing state... [id=subnet-0abebf075d3e1aba0]
+module.network.aws_subnet.public[1]: Refreshing state... [id=subnet-0c699450e3512d0e7]
+module.network.aws_subnet.public[0]: Refreshing state... [id=subnet-09db47a381a67c112]
+module.network.aws_eip.nat[0]: Refreshing state... [id=eipalloc-0a1df617222ace6f7]
+module.storage.aws_s3_bucket_server_side_encryption_configuration.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_lifecycle_configuration.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_versioning.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_public_access_block.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.network.aws_route_table_association.private_app[1]: Refreshing state... [id=rtbassoc-0e0f4d25cfd89a0c2]
+module.network.aws_route_table_association.private_app[0]: Refreshing state... [id=rtbassoc-060fb73d06eaf4546]
+module.network.aws_route.public_igw: Refreshing state... [id=r-rtb-0637ddc3e0454fc001080289494]
+module.network.aws_network_acl_rule.public_out_http: Refreshing state... [id=nacl-1563588610]
+module.network.aws_network_acl_rule.public_out_web: Refreshing state... [id=nacl-1580483453]
+module.network.aws_network_acl_rule.public_in_ephemeral: Refreshing state... [id=nacl-3264056799]
+module.network.aws_network_acl_rule.public_out_app: Refreshing state... [id=nacl-715959026]
+module.network.aws_network_acl_rule.public_in_https: Refreshing state... [id=nacl-2135417105]
+module.network.aws_network_acl_rule.public_out_ephemeral: Refreshing state... [id=nacl-2970216093]
+module.network.aws_network_acl_rule.public_in_http: Refreshing state... [id=nacl-2731620500]
+module.network.aws_network_acl_rule.public_out_https: Refreshing state... [id=nacl-3331798125]
+module.network.aws_network_acl_rule.private_in_ephemeral: Refreshing state... [id=nacl-395868572]
+module.network.aws_network_acl_rule.private_out_ephemeral: Refreshing state... [id=nacl-3300671935]
+module.network.aws_network_acl_rule.private_in_web: Refreshing state... [id=nacl-2857506130]
+module.network.aws_network_acl_rule.private_out_ephemeral_public: Refreshing state... [id=nacl-1595477456]
+module.network.aws_network_acl_rule.private_in_db: Refreshing state... [id=nacl-3389956121]
+module.network.aws_network_acl_association.private_app[1]: Refreshing state... [id=aclassoc-0b6dc849170891b3b]
+module.network.aws_network_acl_rule.private_out_db: Refreshing state... [id=nacl-729932895]
+module.network.aws_network_acl_association.private_app[0]: Refreshing state... [id=aclassoc-0f1ed54349ca68254]
+module.network.aws_network_acl_rule.private_out_https: Refreshing state... [id=nacl-3005387599]
+module.network.aws_network_acl_rule.private_out_http: Refreshing state... [id=nacl-679993120]
+module.network.aws_network_acl_rule.private_in_app: Refreshing state... [id=nacl-2009386199]
+module.network.aws_network_acl_association.private_data[0]: Refreshing state... [id=aclassoc-047a005afc9b67b5a]
+module.network.aws_network_acl_association.private_data[1]: Refreshing state... [id=aclassoc-08488841173d34d76]
+module.network.aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-00714de6a05546db7]
+module.network.aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-07819bce7553124e3]
+module.network.aws_route_table_association.private_data[1]: Refreshing state... [id=rtbassoc-06e97abcee09f104d]
+module.network.aws_route_table_association.private_data[0]: Refreshing state... [id=rtbassoc-094fb1ca37c385c3f]
+module.network.aws_network_acl_association.public[0]: Refreshing state... [id=aclassoc-0df51a70b38164d42]
+module.network.aws_network_acl_association.public[1]: Refreshing state... [id=aclassoc-03e6a1fafca661287]
+module.storage.aws_s3_bucket_policy.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.network.aws_nat_gateway.this[0]: Refreshing state... [id=nat-00d742e1d7ec90d63]
+module.network.aws_route.private_nat[0]: Refreshing state... [id=r-rtb-0b5c5e07d29f2f7d51080289494]
+module.security.aws_security_group.db: Refreshing state... [id=sg-0e45c49a5fa17e228]
+module.security.aws_security_group.web_service: Refreshing state... [id=sg-06d5ebdf4c794a036]
+module.security.aws_security_group.web: Refreshing state... [id=sg-0d824b07415b3473d]
+module.security.aws_security_group.app: Refreshing state... [id=sg-0243e1697c45cbea2]
+module.security.aws_security_group_rule.web_service_egress_internet: Refreshing state... [id=sgrule-2949046501]
+module.security.aws_security_group_rule.app_ingress_from_web_service: Refreshing state... [id=sgrule-1235036192]
+module.security.aws_security_group_rule.app_egress_internet: Refreshing state... [id=sgrule-14738916]
+module.security.aws_security_group_rule.db_ingress_from_app: Refreshing state... [id=sgrule-592823110]
+module.security.aws_security_group_rule.web_service_egress_app: Refreshing state... [id=sgrule-105230214]
+module.security.aws_security_group_rule.app_egress_db: Refreshing state... [id=sgrule-2579793127]
+module.security.aws_security_group_rule.web_ingress_https: Refreshing state... [id=sgrule-2690846078]
+module.security.aws_security_group_rule.app_ingress_from_web: Refreshing state... [id=sgrule-2092525391]
+module.security.aws_security_group_rule.web_egress_app: Refreshing state... [id=sgrule-3307498944]
+module.security.aws_security_group_rule.web_service_ingress_from_web: Refreshing state... [id=sgrule-2659641719]
+module.security.aws_security_group_rule.web_egress_web_service: Refreshing state... [id=sgrule-2447913533]
+module.security.aws_security_group_rule.web_ingress_http: Refreshing state... [id=sgrule-1672814293]
+module.database.aws_db_subnet_group.default: Refreshing state... [id=oyd-project-dev-db-subnet-group]
+module.database.aws_db_parameter_group.default: Refreshing state... [id=oyd-project-dev-db-pg]
+module.compute.aws_ecs_cluster.this: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:cluster/oyd-project-dev-cluster]
+module.compute.aws_cloudwatch_log_group.web: Refreshing state... [id=/ecs/oyd-project-dev/web]
+module.compute.aws_iam_role.api_task: Refreshing state... [id=oyd-project-dev-api-task-role]
+module.compute.aws_cloudwatch_log_group.api: Refreshing state... [id=/ecs/oyd-project-dev/api]
+module.compute.aws_iam_role.ecs_task_exec: Refreshing state... [id=oyd-project-dev-ecs-exec-role]
+module.compute.aws_iam_role_policy.api_s3_receipts: Refreshing state... [id=oyd-project-dev-api-task-role:oyd-project-dev-api-s3-receipts]
+module.compute.aws_iam_role_policy_attachment.ecs_exec_managed: Refreshing state... [id=oyd-project-dev-ecs-exec-role-20260608045049501400000001]
+module.compute.aws_ecs_task_definition.api: Refreshing state... [id=oyd-project-dev-api]
+module.compute.aws_iam_role_policy.ecs_exec_ssm: Refreshing state... [id=oyd-project-dev-ecs-exec-role:oyd-project-dev-ecs-exec-ssm]
+module.compute.aws_ecs_task_definition.web: Refreshing state... [id=oyd-project-dev-web]
+module.compute.aws_ecs_service.api: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-api-svc]
+module.compute.aws_ecs_service.web: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-web-svc]
+module.database.aws_db_instance.default: Refreshing state... [id=db-6GJCJZ5BYQQT2UTV76TZE7ILXQ]
+
+Terraform used the selected providers to generate the following execution plan. Resource actions are indicated with the following
+symbols:
+  + create
+  ~ update in-place
+  - destroy
+
+Terraform will perform the following actions:
+
+  # module.alb.aws_lb.this will be destroyed
+  # (because aws_lb.this is not in configuration)
+  - resource "aws_lb" "this" {
+      - arn                                                          = "arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203" -> null
+      - arn_suffix                                                   = "app/oyd-project-dev-alb/9707808c72c71203" -> null
+      - client_keep_alive                                            = 3600 -> null
+      - desync_mitigation_mode                                       = "defensive" -> null
+      - dns_name                                                     = "oyd-project-dev-alb-742406984.us-east-1.elb.amazonaws.com" -> null
+      - drop_invalid_header_fields                                   = false -> null
+      - enable_cross_zone_load_balancing                             = true -> null
+      - enable_deletion_protection                                   = false -> null
+      - enable_http2                                                 = true -> null
+      - enable_tls_version_and_cipher_suite_headers                  = false -> null
+      - enable_waf_fail_open                                         = false -> null
+      - enable_xff_client_port                                       = false -> null
+      - enable_zonal_shift                                           = false -> null
+      - id                                                           = "arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203" -> null
+      - idle_timeout                                                 = 60 -> null
+      - internal                                                     = false -> null
+      - ip_address_type                                              = "ipv4" -> null
+      - load_balancer_type                                           = "application" -> null
+      - name                                                         = "oyd-project-dev-alb" -> null
+      - preserve_host_header                                         = false -> null
+      - security_groups                                              = [
+          - "sg-0d824b07415b3473d",
+        ] -> null
+      - subnets                                                      = [
+          - "subnet-09db47a381a67c112",
+          - "subnet-0c699450e3512d0e7",
+        ] -> null
+      - tags                                                         = {
+          - "Component"   = "alb"
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+      - tags_all                                                     = {
+          - "Component"   = "alb"
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+      - vpc_id                                                       = "vpc-013a3f24358015fd7" -> null
+      - xff_header_processing_mode                                   = "append" -> null
+      - zone_id                                                      = "Z35SXDOTRQ7X7K" -> null
+        # (3 unchanged attributes hidden)
+
+      - access_logs {
+          - enabled = false -> null
+            # (2 unchanged attributes hidden)
+        }
+
+      - connection_logs {
+          - enabled = false -> null
+            # (2 unchanged attributes hidden)
+        }
+
+      - subnet_mapping {
+          - subnet_id            = "subnet-09db47a381a67c112" -> null
+            # (4 unchanged attributes hidden)
+        }
+      - subnet_mapping {
+          - subnet_id            = "subnet-0c699450e3512d0e7" -> null
+            # (4 unchanged attributes hidden)
+        }
+    }
+
+  # module.alb.aws_lb_listener.http will be destroyed
+  # (because aws_lb_listener.http is not in configuration)
+  - resource "aws_lb_listener" "http" {
+      - arn                                                                 = "arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669" -> null
+      - id                                                                  = "arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669" -> null
+      - load_balancer_arn                                                   = "arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203" -> null
+      - port                                                                = 80 -> null
+      - protocol                                                            = "HTTP" -> null
+      - routing_http_response_server_enabled                                = true -> null
+      - tags                                                                = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+      - tags_all                                                            = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+        # (11 unchanged attributes hidden)
+
+      - default_action {
+          - order            = 1 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11" -> null
+          - type             = "forward" -> null
+        }
+    }
+
+  # module.alb.aws_lb_listener_rule.api will be destroyed
+  # (because aws_lb_listener_rule.api is not in configuration)
+  - resource "aws_lb_listener_rule" "api" {
+      - arn          = "arn:aws:elasticloadbalancing:us-east-1:733202870569:listener-rule/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669/8c533da0725dad21" -> null
+      - id           = "arn:aws:elasticloadbalancing:us-east-1:733202870569:listener-rule/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669/8c533da0725dad21" -> null
+      - listener_arn = "arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/9707808c72c71203/337dd66f1d622669" -> null
+      - priority     = 100 -> null
+      - tags         = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+      - tags_all     = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Project"     = "oyd-project"
+        } -> null
+
+      - action {
+          - order            = 1 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788" -> null
+          - type             = "forward" -> null
+        }
+
+      - condition {
+          - path_pattern {
+              - values = [
+                  - "/api/*",
+                  - "/availability*",
+                  - "/health",
+                  - "/reservar*",
+                  - "/reservations/*",
+                ] -> null
+            }
+        }
+    }
+
+  # module.alb.aws_lb_target_group.api will be destroyed
+  # (because aws_lb_target_group.api is not in configuration)
+  - resource "aws_lb_target_group" "api" {
+      - arn                                = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788" -> null
+      - arn_suffix                         = "targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788" -> null
+      - deregistration_delay               = "300" -> null
+      - id                                 = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788" -> null
+      - ip_address_type                    = "ipv4" -> null
+      - lambda_multi_value_headers_enabled = false -> null
+      - load_balancer_arns                 = [
+          - "arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203",
+        ] -> null
+      - load_balancing_algorithm_type      = "round_robin" -> null
+      - load_balancing_anomaly_mitigation  = "off" -> null
+      - load_balancing_cross_zone_enabled  = "use_load_balancer_configuration" -> null
+      - name                               = "oyd-project-dev-api-tg" -> null
+      - port                               = 8080 -> null
+      - protocol                           = "HTTP" -> null
+      - protocol_version                   = "HTTP1" -> null
+      - proxy_protocol_v2                  = false -> null
+      - slow_start                         = 0 -> null
+      - tags                               = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Service"     = "api"
+        } -> null
+      - tags_all                           = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Service"     = "api"
+        } -> null
+      - target_type                        = "ip" -> null
+      - vpc_id                             = "vpc-013a3f24358015fd7" -> null
+        # (1 unchanged attribute hidden)
+
+      - health_check {
+          - enabled             = true -> null
+          - healthy_threshold   = 2 -> null
+          - interval            = 30 -> null
+          - matcher             = "200" -> null
+          - path                = "/health" -> null
+          - port                = "traffic-port" -> null
+          - protocol            = "HTTP" -> null
+          - timeout             = 5 -> null
+          - unhealthy_threshold = 3 -> null
+        }
+
+      - stickiness {
+          - cookie_duration = 86400 -> null
+          - enabled         = false -> null
+          - type            = "lb_cookie" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - target_failover {}
+
+      - target_group_health {
+          - dns_failover {
+              - minimum_healthy_targets_count      = "1" -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+          - unhealthy_state_routing {
+              - minimum_healthy_targets_count      = 1 -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+        }
+
+      - target_health_state {}
+    }
+
+  # module.alb.aws_lb_target_group.web will be destroyed
+  # (because aws_lb_target_group.web is not in configuration)
+  - resource "aws_lb_target_group" "web" {
+      - arn                                = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11" -> null
+      - arn_suffix                         = "targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11" -> null
+      - deregistration_delay               = "300" -> null
+      - id                                 = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11" -> null
+      - ip_address_type                    = "ipv4" -> null
+      - lambda_multi_value_headers_enabled = false -> null
+      - load_balancer_arns                 = [
+          - "arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/9707808c72c71203",
+        ] -> null
+      - load_balancing_algorithm_type      = "round_robin" -> null
+      - load_balancing_anomaly_mitigation  = "off" -> null
+      - load_balancing_cross_zone_enabled  = "use_load_balancer_configuration" -> null
+      - name                               = "oyd-project-dev-web-tg" -> null
+      - port                               = 3000 -> null
+      - protocol                           = "HTTP" -> null
+      - protocol_version                   = "HTTP1" -> null
+      - proxy_protocol_v2                  = false -> null
+      - slow_start                         = 0 -> null
+      - tags                               = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Service"     = "web"
+        } -> null
+      - tags_all                           = {
+          - "Environment" = "dev"
+          - "ManagedBy"   = "terraform"
+          - "Service"     = "web"
+        } -> null
+      - target_type                        = "ip" -> null
+      - vpc_id                             = "vpc-013a3f24358015fd7" -> null
+        # (1 unchanged attribute hidden)
+
+      - health_check {
+          - enabled             = true -> null
+          - healthy_threshold   = 2 -> null
+          - interval            = 30 -> null
+          - matcher             = "200-399" -> null
+          - path                = "/" -> null
+          - port                = "traffic-port" -> null
+          - protocol            = "HTTP" -> null
+          - timeout             = 5 -> null
+          - unhealthy_threshold = 3 -> null
+        }
+
+      - stickiness {
+          - cookie_duration = 86400 -> null
+          - enabled         = false -> null
+          - type            = "lb_cookie" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+      - target_failover {}
+
+      - target_group_health {
+          - dns_failover {
+              - minimum_healthy_targets_count      = "1" -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+          - unhealthy_state_routing {
+              - minimum_healthy_targets_count      = 1 -> null
+              - minimum_healthy_targets_percentage = "off" -> null
+            }
+        }
+
+      - target_health_state {}
+    }
+
+  # module.async_email.aws_sqs_queue.dlq will be created
+  + resource "aws_sqs_queue" "dlq" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 1209600
+      + name                              = "oyd-project-dev-receipt-email-dlq"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 30
+    }
+
+  # module.async_email.aws_sqs_queue.main will be created
+  + resource "aws_sqs_queue" "main" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 345600
+      + name                              = "oyd-project-dev-receipt-email-queue"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 30
+    }
+
+  # module.async_receipt.aws_sqs_queue.dlq will be created
+  + resource "aws_sqs_queue" "dlq" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 1209600
+      + name                              = "oyd-project-dev-receipt-dlq"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 30
+    }
+
+  # module.async_receipt.aws_sqs_queue.main will be created
+  + resource "aws_sqs_queue" "main" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 345600
+      + name                              = "oyd-project-dev-receipt-queue"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 60
+    }
+
+  # module.async_release.aws_sqs_queue.dlq will be created
+  + resource "aws_sqs_queue" "dlq" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 1209600
+      + name                              = "oyd-project-dev-release-dlq"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 30
+    }
+
+  # module.async_release.aws_sqs_queue.main will be created
+  + resource "aws_sqs_queue" "main" {
+      + arn                               = (known after apply)
+      + content_based_deduplication       = false
+      + deduplication_scope               = (known after apply)
+      + delay_seconds                     = 0
+      + fifo_queue                        = false
+      + fifo_throughput_limit             = (known after apply)
+      + id                                = (known after apply)
+      + kms_data_key_reuse_period_seconds = (known after apply)
+      + max_message_size                  = 262144
+      + message_retention_seconds         = 345600
+      + name                              = "oyd-project-dev-release-queue"
+      + name_prefix                       = (known after apply)
+      + policy                            = (known after apply)
+      + receive_wait_time_seconds         = 0
+      + redrive_allow_policy              = (known after apply)
+      + redrive_policy                    = (known after apply)
+      + sqs_managed_sse_enabled           = (known after apply)
+      + tags                              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all                          = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + url                               = (known after apply)
+      + visibility_timeout_seconds        = 30
+    }
+
+  # module.compute.aws_ecs_service.api will be updated in-place
+  ~ resource "aws_ecs_service" "api" {
+      - health_check_grace_period_seconds  = 90 -> null
+        id                                 = "arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-api-svc"
+        name                               = "oyd-project-dev-api-svc"
+        tags                               = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Service"     = "api"
+        }
+        # (16 unchanged attributes hidden)
+
+      - load_balancer {
+          - container_name   = "api" -> null
+          - container_port   = 8080 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/b737a167d8dd7788" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # module.compute.aws_ecs_service.web will be updated in-place
+  ~ resource "aws_ecs_service" "web" {
+      - health_check_grace_period_seconds  = 90 -> null
+        id                                 = "arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-web-svc"
+        name                               = "oyd-project-dev-web-svc"
+        tags                               = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Service"     = "web"
+        }
+        # (16 unchanged attributes hidden)
+
+      - load_balancer {
+          - container_name   = "web" -> null
+          - container_port   = 3000 -> null
+          - target_group_arn = "arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/60ab5e1657d54d11" -> null
+            # (1 unchanged attribute hidden)
+        }
+
+        # (3 unchanged blocks hidden)
+    }
+
+  # module.scheduler.aws_iam_role.scheduler will be created
+  + resource "aws_iam_role" "scheduler" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "scheduler.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + create_date           = (known after apply)
+      + force_detach_policies = false
+      + id                    = (known after apply)
+      + managed_policy_arns   = (known after apply)
+      + max_session_duration  = 3600
+      + name                  = "oyd-project-dev-scheduler-role"
+      + name_prefix           = (known after apply)
+      + path                  = "/"
+      + tags                  = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + tags_all              = {
+          + "Environment" = "dev"
+          + "ManagedBy"   = "terraform"
+          + "Project"     = "oyd-project"
+        }
+      + unique_id             = (known after apply)
+
+      + inline_policy (known after apply)
+    }
+
+  # module.scheduler.aws_iam_role_policy.scheduler_sqs will be created
+  + resource "aws_iam_role_policy" "scheduler_sqs" {
+      + id          = (known after apply)
+      + name        = "oyd-project-dev-scheduler-sqs"
+      + name_prefix = (known after apply)
+      + policy      = (known after apply)
+      + role        = (known after apply)
+    }
+
+  # module.scheduler.aws_scheduler_schedule.this will be created
+  + resource "aws_scheduler_schedule" "this" {
+      + arn                          = (known after apply)
+      + group_name                   = (known after apply)
+      + id                           = (known after apply)
+      + name                         = "oyd-project-dev-release-expired"
+      + name_prefix                  = (known after apply)
+      + schedule_expression          = "rate(20 minutes)"
+      + schedule_expression_timezone = "America/Guatemala"
+      + state                        = "ENABLED"
+
+      + flexible_time_window {
+          + mode = "OFF"
+        }
+
+      + target {
+          + arn      = (known after apply)
+          + input    = jsonencode(
+                {
+                  + data       = {}
+                  + event_type = "ReleaseExpiredReservationCommand"
+                }
+            )
+          + role_arn = (known after apply)
+        }
+    }
+
+Plan: 9 to add, 2 to change, 5 to destroy.
+
+Changes to Outputs:
+  - alb_dns_name                  = "oyd-project-dev-alb-742406984.us-east-1.elb.amazonaws.com" -> null
+  - alb_url                       = "http://oyd-project-dev-alb-742406984.us-east-1.elb.amazonaws.com" -> null
+  + email_dlq_arn                 = (known after apply)
+  + email_dlq_url                 = (known after apply)
+  + email_queue_arn               = (known after apply)
+  + email_queue_url               = (known after apply)
+  + receipt_dlq_arn               = (known after apply)
+  + receipt_dlq_url               = (known after apply)
+  + receipt_queue_arn             = (known after apply)
+  + receipt_queue_url             = (known after apply)
+  + release_dlq_arn               = (known after apply)
+  + release_dlq_url               = (known after apply)
+  + release_queue_arn             = (known after apply)
+  + release_queue_url             = (known after apply)
+  + scheduler_role_arn            = (known after apply)
+  + scheduler_schedule_name       = "oyd-project-dev-release-expired"
+
+───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+Saved the plan to: tfplan
+
+To perform exactly these actions, run the following command to apply:
+    terraform apply "tfplan"

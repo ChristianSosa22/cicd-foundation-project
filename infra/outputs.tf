@@ -124,3 +124,77 @@ output "receipts_bucket_arn" {
   description = "ARN of the S3 receipts bucket."
   value       = module.storage.bucket_arn
 }
+
+# ── Async Messaging ───────────────────────────────────────────────────────────
+
+output "receipt_queue_url" {
+  description = "URL of the receipt SQS queue. The API producer enqueues GenerateReceiptCommand here."
+  value       = module.async_receipt.queue_url
+}
+
+output "receipt_queue_arn" {
+  description = "ARN of the receipt SQS queue. Use in IAM policies for the receipt-worker Lambda."
+  value       = module.async_receipt.queue_arn
+}
+
+output "receipt_dlq_url" {
+  description = "URL of the receipt DLQ. Inspect failed receipt generation messages here."
+  value       = module.async_receipt.dlq_url
+}
+
+output "receipt_dlq_arn" {
+  description = "ARN of the receipt DLQ. Use in CloudWatch alarms to alert on dead-lettered messages."
+  value       = module.async_receipt.dlq_arn
+}
+
+output "release_queue_url" {
+  description = "URL of the release SQS queue. The EventBridge Scheduler sends ReleaseExpiredReservationCommand here."
+  value       = module.async_release.queue_url
+}
+
+output "release_queue_arn" {
+  description = "ARN of the release SQS queue. Use in IAM policies for the release-worker Lambda."
+  value       = module.async_release.queue_arn
+}
+
+output "release_dlq_url" {
+  description = "URL of the release DLQ. Inspect failed release sweep messages here."
+  value       = module.async_release.dlq_url
+}
+
+output "release_dlq_arn" {
+  description = "ARN of the release DLQ. Use in CloudWatch alarms to alert on dead-lettered messages."
+  value       = module.async_release.dlq_arn
+}
+
+output "email_queue_url" {
+  description = "URL of the email SQS queue. SNS fan-out delivers ReceiptReadyEvent here for the email-worker."
+  value       = module.async_email.queue_url
+}
+
+output "email_queue_arn" {
+  description = "ARN of the email SQS queue. Use in IAM policies for the email-worker Lambda and SNS subscription."
+  value       = module.async_email.queue_arn
+}
+
+output "email_dlq_url" {
+  description = "URL of the email DLQ. Inspect failed email delivery messages here."
+  value       = module.async_email.dlq_url
+}
+
+output "email_dlq_arn" {
+  description = "ARN of the email DLQ. Use in CloudWatch alarms to alert on dead-lettered messages."
+  value       = module.async_email.dlq_arn
+}
+
+# ── Scheduler ─────────────────────────────────────────────────────────────────
+
+output "scheduler_schedule_name" {
+  description = "Name of the EventBridge Scheduler schedule that triggers expired-reservation sweeps."
+  value       = module.scheduler.schedule_name
+}
+
+output "scheduler_role_arn" {
+  description = "ARN of the IAM role assumed by EventBridge Scheduler. Scoped to sqs:SendMessage on the release-queue only."
+  value       = module.scheduler.scheduler_role_arn
+}
