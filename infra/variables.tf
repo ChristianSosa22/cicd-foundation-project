@@ -241,3 +241,17 @@ variable "scheduler_target_message" {
   type        = string
   default     = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"
 }
+
+# ── Async worker (SQS consumer) — Delivery 4 ──────────────────────────────────
+
+variable "worker_desired_count" {
+  description = "Desired number of running async worker tasks. 1 keeps a single consumer polling the receipt queue; 0 pauses polling without destroying the service."
+  type        = number
+  default     = 1
+}
+
+variable "polling_batch_size" {
+  description = "Maximum number of messages the async worker requests per SQS ReceiveMessage call (1-10). Injected into the worker container as POLLING_BATCH_SIZE."
+  type        = number
+  default     = 10
+}

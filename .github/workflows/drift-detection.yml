@@ -1,0 +1,183 @@
+name: Terraform Drift Detection
+
+# Runs daily at 06:00 UTC and can be triggered manually.
+# Checks BOTH environments (dev and prod) for infrastructure drift —
+# i.e., real AWS resources that differ from the Terraform state.
+#
+# Drift detection jobs do NOT use the 'environment:' key so they bypass
+# the production required-reviewer gate and run unattended on schedule.
+# Instead they authenticate using repo-level vars:
+#   AWS_DEPLOY_ROLE_ARN_DEV  — same role as the 'dev' environment, but
+#   AWS_DEPLOY_ROLE_ARN_PROD   trusted via ref:refs/heads/main claim.
+# Set these in: GitHub → Settings → Variables → Repository variables.
+on:
+  schedule:
+    - cron: "0 6 * * *" # daily at 06:00 UTC
+  workflow_dispatch:
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  # ── Dev environment drift check ────────────────────────────────────────────
+  detect-dev:
+    name: Drift check — dev
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: ./infra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.8"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN_DEV }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
+
+      - name: Terraform Plan (drift check)
+        id: plan
+        # -detailed-exitcode: 0 = no changes, 1 = error, 2 = drift detected
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -input=false \
+            -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD_DEV }}
+
+      - name: Open or update drift issue
+        if: steps.plan.outputs.exit_code == '2'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8');
+            const env = 'dev';
+            const title = `[Drift] Infrastructure drift detected in ${env}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `**Drift detected in \`${env}\` at ${new Date().toISOString()}**\n\nWorkflow run: ${runUrl}\n\n<details><summary>Terraform plan diff</summary>\n\n\`\`\`\n${plan}\n\`\`\`\n</details>\n\nResolve by running \`terraform apply\` or reverting the manual change.`;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'open',
+              labels: ['drift', env]
+            });
+
+            if (issues.length > 0) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issues[0].number,
+                body
+              });
+              console.log(`Updated existing drift issue #${issues[0].number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                ...context.repo,
+                title,
+                body,
+                labels: ['drift', env]
+              });
+              console.log(`Opened new drift issue #${issue.number}`);
+            }
+
+      - name: Fail on drift
+        if: steps.plan.outputs.exit_code == '2'
+        run: |
+          echo "::error::Drift detected in dev environment. See the opened/updated GitHub issue."
+          exit 1
+
+  # ── Production environment drift check ────────────────────────────────────
+  detect-prod:
+    name: Drift check — production
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: read
+      issues: write
+    defaults:
+      run:
+        working-directory: ./infra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.8"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN_PROD }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init -input=false -backend-config="key=env/prod/terraform.tfstate"
+
+      - name: Terraform Plan (drift check)
+        id: plan
+        run: |
+          set +e
+          terraform plan -detailed-exitcode -input=false \
+            -var-file=envs/prod/prod.tfvars -no-color 2>&1 | tee plan.txt
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD_PROD }}
+
+      - name: Open or update drift issue
+        if: steps.plan.outputs.exit_code == '2'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('infra/plan.txt', 'utf8');
+            const env = 'production';
+            const title = `[Drift] Infrastructure drift detected in ${env}`;
+            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const body = `**Drift detected in \`${env}\` at ${new Date().toISOString()}**\n\nWorkflow run: ${runUrl}\n\n<details><summary>Terraform plan diff</summary>\n\n\`\`\`\n${plan}\n\`\`\`\n</details>\n\nResolve by running \`terraform apply\` or reverting the manual change.`;
+
+            const { data: issues } = await github.rest.issues.listForRepo({
+              ...context.repo,
+              state: 'open',
+              labels: ['drift', env]
+            });
+
+            if (issues.length > 0) {
+              await github.rest.issues.createComment({
+                ...context.repo,
+                issue_number: issues[0].number,
+                body
+              });
+              console.log(`Updated existing drift issue #${issues[0].number}`);
+            } else {
+              const { data: issue } = await github.rest.issues.create({
+                ...context.repo,
+                title,
+                body,
+                labels: ['drift', env]
+              });
+              console.log(`Opened new drift issue #${issue.number}`);
+            }
+
+      - name: Fail on drift
+        if: steps.plan.outputs.exit_code == '2'
+        run: |
+          echo "::error::Drift detected in production environment. See the opened/updated GitHub issue."
+          exit 1

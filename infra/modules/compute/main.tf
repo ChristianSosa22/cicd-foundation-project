@@ -117,6 +117,23 @@ resource "aws_iam_role_policy" "api_s3_receipts" {
   })
 }
 
+# Grants the API container the ability to enqueue receipt-generation messages.
+# The POST /reservas/enqueue endpoint (async producer) calls sqs:SendMessage on
+# the receipt queue. Scoped to the specific queue ARN — no wildcard.
+resource "aws_iam_role_policy" "api_sqs_send" {
+  name = "${var.name}-${var.environment}-api-sqs-send"
+  role = aws_iam_role.api_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["sqs:SendMessage"]
+      Resource = var.sqs_queue_arn
+    }]
+  })
+}
+
 # ── Task Definitions ──────────────────────────────────────────────────────────
 
 # API: Node/Express backend. Health check uses /ready (DB-aware) per health.routes.ts.
@@ -139,12 +156,15 @@ resource "aws_ecs_task_definition" "api" {
       protocol      = "tcp"
     }]
 
-    # Non-secret config injected as plaintext environment variables
+    # Non-secret config injected as plaintext environment variables.
+    # RECEIPT_QUEUE_URL wires the async producer endpoint (POST /reservas/enqueue)
+    # to the SQS receipt queue provisioned by the async module.
     environment = [
       { name = "NODE_ENV", value = "production" },
       { name = "PORT", value = "8080" },
       { name = "AWS_REGION", value = var.aws_region },
-      { name = "S3_BUCKET", value = var.s3_bucket }
+      { name = "S3_BUCKET", value = var.s3_bucket },
+      { name = "RECEIPT_QUEUE_URL", value = var.sqs_queue_url }
     ]
 
     # Secret config pulled from SSM at container start — never stored in plaintext
