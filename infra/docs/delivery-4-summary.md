@@ -46,6 +46,80 @@ auto-escalado por profundidad de cola.
 
 ## 3. Terraform environment layout and CD pipeline
 
+**Aislamiento de estado por entorno (partial backend).** El backend S3 original usaba
+una clave hardcodeada (`infra/terraform.tfstate`), lo que hacía imposible operar dos
+entornos sin que uno sobreescribiera el estado del otro. Se migró a un **partial
+backend**: `infra/backend.tf` declara el bucket, la región y la tabla DynamoDB, pero
+omite la `key`. Cada entorno aporta su propia clave en tiempo de `init` mediante un
+archivo `.hcl` dedicado (`infra/envs/dev/backend.hcl` → `env/dev/terraform.tfstate`,
+`infra/envs/prod/backend.hcl` → `env/prod/terraform.tfstate`). El comando de
+inicialización pasa a ser `terraform init -backend-config=envs/<env>/backend.hcl`.
+Ambos entornos comparten el mismo bucket y la misma tabla de locks, pero sus estados
+son completamente independientes: un `apply` sobre `prod` no puede tocar el estado de
+`dev` ni viceversa.
+
+**Estructura de entornos dev y prod.** La separación de entornos se gestiona con
+`-var-file`, no con Terraform workspaces, manteniendo los estados explícitos y
+auditables. `infra/envs/dev/dev.tfvars` define el entorno de desarrollo (un solo NAT
+Gateway, `db.t3.micro`, sin Multi-AZ, `deletion_protection = false`). El nuevo
+`infra/envs/prod/prod.tfvars` replica los ajustes de alta disponibilidad: NAT por AZ
+(`single_nat_gateway = false`), `db.t3.small`, `multi_az = true`, retención de SQS de
+7 días y `deletion_protection = true` — garantizando que un `terraform destroy` en
+producción falle de forma intencional hasta que se relaje la protección manualmente.
+
+**Autenticación OIDC (sin credenciales de larga vida).** Las credenciales estáticas
+(`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`) fueron reemplazadas por **federación
+OIDC de GitHub Actions con AWS IAM**. El módulo bootstrap (`infra/bootstrap/oidc.tf`)
+provisiona un `aws_iam_openid_connect_provider` para `token.actions.githubusercontent.com`
+y dos roles IAM dedicados: `gha-deploy-dev` y `gha-deploy-prod`. Cada rol restringe su
+trust policy con la condición `sub` de OIDC — `gha-deploy-dev` solo puede ser asumido
+por jobs corriendo bajo el GitHub Environment `dev` o desde la rama `main` (para
+detección de drift); `gha-deploy-prod`, exclusivamente desde el Environment `prod` o
+`main`. Los jobs en el workflow usan `aws-actions/configure-aws-credentials@v4` con
+`role-to-assume`, lo que emite credenciales temporales de 1 hora sin ninguna clave
+almacenada en GitHub Secrets.
+
+**GitHub Environments y ruleset de rama.** Se configuraron dos GitHub Environments:
+`dev` (sin gate de aprobación) y `prod` (revisor requerido — el merge a producción
+queda bloqueado hasta que un humano apruebe el deployment). El ruleset sobre `main`
+impone que todo cambio llegue vía Pull Request con al menos 1 aprobación y con el
+check `Terraform Plan (dev)` en verde, y bloquea force-push y eliminación de la rama.
+Esto cierra el ciclo: no es posible modificar la infraestructura sin revisión de código
+ni sin un plan aprobado.
+
+**Pipeline de tres fases (plan → deploy-dev → deploy-prod).** El workflow
+`.github/workflows/terraform-ci.yml` reemplaza el job único anterior por tres jobs
+condicionales. El job `plan` corre en cada PR contra `main`, autentica con el rol dev,
+inicializa con `envs/dev/backend.hcl` y ejecuta `terraform plan -var-file=envs/dev/dev.tfvars`,
+publicando el diff como comentario colapsable en el PR — este job es el required status
+check del ruleset. Al mergear, `deploy-dev` corre automáticamente (environment `dev`,
+sin gate) y aplica el plan sobre dev seguido del seed idempotente de la base de datos
+vía `ecs run-task`. Solo cuando `deploy-dev` termina exitosamente se activa
+`deploy-prod` (cláusula `needs: deploy-dev`), que pausa en "Waiting for review" hasta
+la aprobación del Environment `prod`, luego inicializa con `envs/prod/backend.hcl` y
+aplica `prod.tfvars`. El grupo de `concurrency` por job (`deploy-dev` / `deploy-prod`)
+garantiza que dos merges simultáneos no generen applies paralelos sobre el mismo entorno.
+
+**Detección de drift.** El workflow `.github/workflows/drift-detection.yml` corre
+diariamente a las 06:00 UTC (y bajo `workflow_dispatch`) sobre ambos entornos en
+paralelo. Usa `terraform plan -detailed-exitcode`: el código de salida `0` indica que
+el estado está sincronizado; el código `2` indica drift — recursos modificados fuera de
+Terraform. En ese caso el job abre o actualiza un Issue en GitHub etiquetado con
+`drift` y el nombre del entorno, y falla el run para que quede visible en el dashboard
+de Actions. Los jobs de drift no usan el GitHub Environment como gate (usarían el
+revisor de prod, bloqueando la ejecución automatizada); en su lugar se autentican con
+variables de repositorio (`AWS_DEPLOY_ROLE_ARN_DEV` / `AWS_DEPLOY_ROLE_ARN_PROD`) que
+referencian los mismos roles IAM, cuya trust policy permite la claim `ref:refs/heads/main`.
+
+**Destroy con gate.** El workflow `.github/workflows/destroy.yml` es exclusivamente
+`workflow_dispatch` y recibe dos inputs: `environment` (dropdown `dev` / `prod`) y
+`confirm` (texto libre). El primer paso compara ambos valores y falla si no coinciden,
+previniendo que un operador destruya el entorno equivocado por error de selección. Al
+seleccionar `prod`, el job hereda el gate del GitHub Environment `prod` y requiere
+aprobación antes de ejecutar ningún paso — incluyendo el `terraform destroy`. La
+protección a nivel de RDS (`deletion_protection = true`) actúa como segunda línea de
+defensa: incluso con el destroy aprobado y confirmado, AWS rechaza la eliminación de la
+instancia hasta que se deshabilite explícitamente ese flag en `prod.tfvars`.
 
 ---
 
