@@ -3,6 +3,20 @@
 
 ## 1. Async messaging design
 
+**Servicio elegido: SQS Standard (no FIFO).** El sistema utiliza Amazon SQS en modo estándar como servicio de mensajería asíncrona. Se descartó SQS FIFO porque el sistema no requiere ordenamiento estricto de mensajes: cada reserva tiene un `reservation_id` único en el payload, y el procesamiento de un comprobante o una liberación es independiente del orden en que ocurran. FIFO añade un costo adicional por mensaje ($0.01/M vs $0.00/M en modo estándar, con un free tier más reducido) y limita el throughput a 300 mensajes por segundo (3,000 con batching), mientras que SQS Standard no tiene límites de throughput. Para el volumen esperado del sistema de parqueos (decenas a cientos de reservas diarias), el modo estándar es la opción correcta.
+
+**Tres colas con DLQ independiente.** Se crearon tres colas SQS, cada una con su Dead Letter Queue dedicada:
+
+| Cola principal | DLQ | Flujo de negocio |
+|---|---|---|
+| `oyd-project-dev-receipt-queue` | `oyd-project-dev-receipt-dlq` | GenerateReceiptCommand: la API encola la solicitud de comprobante; el receipt-worker genera el PDF y lo sube a S3. |
+| `oyd-project-dev-release-queue` | `oyd-project-dev-release-dlq` | ReleaseExpiredReservationCommand: el EventBridge Scheduler publica un barrido periódico; el release-worker libera reservas expiradas. |
+| `oyd-project-dev-receipt-email-queue` | `oyd-project-dev-receipt-email-dlq` | ReceiptReadyEvent: el SNS topic distribuye el evento de comprobante listo; el email-worker envía el correo al conductor. |
+
+**Configuración de la DLQ y reintentos.** Cada cola principal tiene una `redrive_policy` que mueve los mensajes fallidos a su DLQ después de 3 intentos (`max_receive_count = 3`). Tres intentos son suficientes para absorber fallos transitorios (un timeout de red, una indisponibilidad momentánea de RDS o S3) sin insistir indefinidamente en un mensaje irrecuperable. El `visibility_timeout` se configuró diferenciado por flujo según la carga de procesamiento esperada: 60 segundos para receipt (generación de PDF + subida a S3), 30 segundos para release (un batch UPDATE condicionado) y 30 segundos para email (llamada a API de correo). Los mensajes en las DLQ se retienen durante 14 días (`dlq_message_retention_seconds = 1209600`), ventana suficiente para inspección manual y redrive antes de que expiren. Las colas principales retienen mensajes 4 días en dev (`message_retention_seconds = 345600`) y 7 días en staging (`604800`).
+
+**Decisión de módulo reutilizable.** Las tres colas se instancian desde un único módulo Terraform en `infra/modules/async/` que crea el par queue + DLQ con `redrive_policy`. Esto garantiza que la configuración de DLQ sea idéntica en los tres flujos y permite agregar colas futuras sin duplicar código. Todas las configuraciones son variables de entrada — ningún valor está hardcodeado en el módulo.
+
 ---
 
 ## 2. Event-driven architecture
@@ -124,6 +138,14 @@ instancia hasta que se deshabilite explícitamente ese flag en `prod.tfvars`.
 ---
 
 ## 4. Scheduled jobs
+
+**Función programada.** Se configuró un schedule de Amazon EventBridge Scheduler denominado `oyd-project-dev-release-expired`. Su propósito es barrer periódicamente las reservas que no fueron confirmadas por el conductor dentro de la ventana de 20 minutos, publicando un `ReleaseExpiredReservationCommand` en la cola SQS `release-queue`. El release-worker consume ese comando y ejecuta un UPDATE condicionado sobre la tabla `reservations` (`SET status = 'expirada' WHERE status = 'reservada' AND confirm_deadline < NOW()`), liberando el espacio para que otro conductor pueda tomarlo.
+
+**Expresión de schedule y zona horaria.** La expresión es `rate(20 minutes)`, disparándose cada 20 minutos. Se eligió esta frecuencia porque coincide con la ventana de confirmación del sistema: una reserva no confirmada se marca como expirada 20 minutos después de la hora pactada. Un barrido cada 20 minutos garantiza que las reservas expiradas se liberen con un retraso máximo de 20 minutos adicionales (en el peor caso, el barrido ocurre justo antes de que la reserva expire y debe esperar al siguiente ciclo). La zona horaria es `America/Guatemala` (CST, UTC-6), alineada con el horario laboral del público objetivo LATAM, de modo que el schedule evalúa las expresiones cron relativas a la hora local del negocio.
+
+**Target de SQS, no Lambda directo.** El schedule apunta a la cola `release-queue` (ARN del módulo async), no a una función Lambda. Esto es consistente con el patrón de comandos del sistema: el Scheduler produce un mensaje `ReleaseExpiredReservationCommand` y el release-worker lo consume vía long-polling. Esta separación permite que los reintentos y el manejo de fallos se beneficien del mecanismo de DLQ de SQS: si el worker falla al procesar el barrido, el mensaje se reintenta automáticamente y, tras 3 intentos fallidos, se traslada a la DLQ para inspección. Si el Scheduler invocara Lambda directamente, un fallo del worker se perdería sin mecanismo de recuperación automático.
+
+**IAM least-privilege.** El rol IAM asumido por EventBridge Scheduler (`oyd-project-dev-scheduler-role`) tiene una única política inline con `sqs:SendMessage` como acción y el ARN de `release-queue` como recurso — sin wildcard `"Resource": "*"`. Este rol es significativamente más estrecho que el rol de ejecución de las tareas ECS (`oyd-project-dev-ecs-exec-role`), que necesita permisos sobre SSM (para leer secretos), ECR (para descargar imágenes) y CloudWatch (para logs). El scheduler solo necesita publicar un mensaje en una cola específica; cualquier permiso adicional sería una violación del principio de mínimo privilegio. La policy fue verificada con `aws iam get-role-policy` para confirmar que no contiene wildcard en el recurso.
 
 
 ---
