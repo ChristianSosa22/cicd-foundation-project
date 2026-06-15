@@ -117,17 +117,23 @@ jobs:
         # RDS is in a private subnet unreachable from the runner, so the seed
         # runs as a one-off ECS task INSIDE the VPC, using the API task role
         # which already has network access to the DB. The seed script is idempotent.
+        # TASKDEF is resolved from describe-task-definition (latest ACTIVE revision)
+        # rather than from the service, which may still reference an older revision
+        # when terraform apply creates a new task definition during the same run.
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
-          SERVICE=$(terraform output -raw ecs_api_service_name)
           SG=$(terraform output -raw app_security_group_id)
           SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
 
-          TASKDEF=$(aws ecs describe-services \
-            --cluster "$CLUSTER" --services "$SERVICE" \
-            --query 'services[0].taskDefinition' --output text)
+          # Family name = cluster name minus the "-cluster" suffix, plus "-api"
+          FAMILY="${CLUSTER%-cluster}-api"
+
+          TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
 
           echo "Launching seed task on $CLUSTER using $TASKDEF"
 
