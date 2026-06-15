@@ -22,3 +22,48 @@ output "region" {
   value       = var.region
   description = "AWS region where the remote state backend resources live."
 }
+
+# ── GitHub OIDC role ARNs ──────────────────────────────────────────────────────
+# Copy these values into GitHub after running: terraform apply -var-file=envs/dev/dev.tfvars
+#
+# GitHub setup (run once — requires repo admin):
+#
+#   # Create environments
+#   gh api repos/<org>/<repo>/environments/dev         -X PUT -H "Accept: application/vnd.github+json" --input /dev/null
+#   gh api repos/<org>/<repo>/environments/production  -X PUT -H "Accept: application/vnd.github+json" --input /dev/null
+#
+#   # Set env-scoped variables (used by deploy-dev, plan, and deploy-prod jobs)
+#   gh variable set AWS_DEPLOY_ROLE_ARN --env dev        --body "<gha_deploy_dev_role_arn>"
+#   gh variable set AWS_DEPLOY_ROLE_ARN --env production --body "<gha_deploy_prod_role_arn>"
+#   gh variable set AWS_REGION          --env dev        --body "us-east-1"
+#   gh variable set AWS_REGION          --env production --body "us-east-1"
+#
+#   # Set env-scoped secrets
+#   gh secret set DB_PASSWORD --env dev        --body "<dev-db-password>"
+#   gh secret set DB_PASSWORD --env production --body "<prod-db-password>"
+#
+#   # Set repo-level variables (used by drift-detection jobs, which bypass env gates)
+#   gh variable set AWS_DEPLOY_ROLE_ARN_DEV  --body "<gha_deploy_dev_role_arn>"
+#   gh variable set AWS_DEPLOY_ROLE_ARN_PROD --body "<gha_deploy_prod_role_arn>"
+#   gh variable set AWS_REGION               --body "us-east-1"
+#
+#   # Set repo-level secrets for drift detection
+#   gh secret set DB_PASSWORD_DEV  --body "<dev-db-password>"
+#   gh secret set DB_PASSWORD_PROD --body "<prod-db-password>"
+#
+#   # Branch ruleset on main (require PR + passing 'plan' check + no force-push)
+#   # Apply the ruleset JSON from infra/docs/main-ruleset.json:
+#   gh api repos/<org>/<repo>/rulesets -X POST --input infra/docs/main-ruleset.json
+#
+#   # Required reviewer for production environment (UI only):
+#   # Settings → Environments → production → Required reviewers → add yourself
+
+output "gha_deploy_dev_role_arn" {
+  value       = aws_iam_role.gha_deploy_dev.arn
+  description = "ARN of the IAM role assumed by GitHub Actions for dev deployments. Set as AWS_DEPLOY_ROLE_ARN in the 'dev' GitHub Environment and as AWS_DEPLOY_ROLE_ARN_DEV at repo level."
+}
+
+output "gha_deploy_prod_role_arn" {
+  value       = aws_iam_role.gha_deploy_prod.arn
+  description = "ARN of the IAM role assumed by GitHub Actions for production deployments. Set as AWS_DEPLOY_ROLE_ARN in the 'production' GitHub Environment and as AWS_DEPLOY_ROLE_ARN_PROD at repo level."
+}
