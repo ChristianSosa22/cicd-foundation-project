@@ -3,20 +3,11 @@
 # Access is exclusively through AWS Systems Manager Session Manager,
 # which provides an encrypted tunnel, IAM-controlled access, and CloudTrail audit logs.
 
-# Latest Amazon Linux 2023 AMI — has the SSM agent pre-installed.
-data "aws_ami" "amazon_linux" {
-  most_recent = true
-  owners      = ["amazon"]
-
-  filter {
-    name   = "name"
-    values = ["al2023-ami-*-x86_64"]
-  }
-
-  filter {
-    name   = "state"
-    values = ["available"]
-  }
+# Official AWS SSM parameter path for the latest Amazon Linux 2023 AMI.
+# Using the SSM parameter (rather than an AMI data source filter) guarantees
+# the returned AMI is the AWS-recommended build with the SSM agent pre-installed.
+data "aws_ssm_parameter" "amazon_linux" {
+  name = "/aws/service/ami-amazon-linux-latest/al2023-ami-kernel-default-x86_64"
 }
 
 # ── IAM: allow EC2 to register with SSM ───────────────────────────────────────
@@ -54,13 +45,22 @@ resource "aws_iam_instance_profile" "ssm_jump" {
 
 # ── EC2 instance ───────────────────────────────────────────────────────────────
 resource "aws_instance" "ssm_jump" {
-  ami                    = data.aws_ami.amazon_linux.id
+  ami                    = data.aws_ssm_parameter.amazon_linux.value
   instance_type          = "t3.micro"
   subnet_id              = var.subnet_id
   iam_instance_profile   = aws_iam_instance_profile.ssm_jump.name
   vpc_security_group_ids = [var.security_group_id]
 
   # No key_name — SSH is intentionally disabled. All access goes through SSM.
+  # user_data explicitly enables and starts the SSM agent to ensure it is
+  # running even if the instance boots before cloud-init completes fully.
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    systemctl enable amazon-ssm-agent
+    systemctl start amazon-ssm-agent
+  EOF
+  )
+
   root_block_device {
     volume_type = "gp3"
     encrypted   = true
