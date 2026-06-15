@@ -206,6 +206,11 @@ output "alb_dns_name" {
   value       = module.alb.alb_dns_name
 }
 
+output "ssm_jump_instance_id" {
+  description = "Instance ID of the SSM jump host. Use this to open an RDS port-forwarding tunnel — see infra/README.md for the full command."
+  value       = module.jumphost.instance_id
+}
+
 output "alb_url" {
   description = "Public HTTP URL of the application (http://<alb_dns_name>). Web frontend at /, backend at /api, /availability, /reservar. Use this in curl evidence."
   value       = module.alb.alb_url
