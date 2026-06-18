@@ -134,6 +134,26 @@ resource "aws_iam_role_policy" "api_sqs_send" {
   })
 }
 
+# Grants the ssmmessages permissions required for ECS Exec (interactive shell access).
+resource "aws_iam_role_policy" "api_ecs_exec" {
+  name = "${var.name}-${var.environment}-api-ecs-exec"
+  role = aws_iam_role.api_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "ssmmessages:CreateControlChannel",
+        "ssmmessages:CreateDataChannel",
+        "ssmmessages:OpenControlChannel",
+        "ssmmessages:OpenDataChannel"
+      ]
+      Resource = "*"
+    }]
+  })
+}
+
 # ── Task Definitions ──────────────────────────────────────────────────────────
 
 # API: Node/Express backend. Health check uses /ready (DB-aware) per health.routes.ts.
@@ -257,11 +277,12 @@ resource "aws_ecs_task_definition" "web" {
 
 # ── ECS Services ──────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "api" {
-  name            = "${var.name}-${var.environment}-api-svc"
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = var.api_desired_count
-  launch_type     = "FARGATE"
+  name                   = "${var.name}-${var.environment}-api-svc"
+  cluster                = aws_ecs_cluster.this.id
+  task_definition        = aws_ecs_task_definition.api.arn
+  desired_count          = var.api_desired_count
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   # Give tasks time to boot and pass the ALB health check before ECS judges them.
   health_check_grace_period_seconds = 90
