@@ -8,7 +8,10 @@ if (!url) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: url });
+const pool = new Pool({
+  connectionString: url,
+  ssl: { rejectUnauthorized: false },
+});
 const db = drizzle(pool);
 
 migrate(db, { migrationsFolder: './drizzle/migrations' })
