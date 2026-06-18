@@ -47,6 +47,7 @@ function CategoryCheckboxes({
             checked={selected.includes(cat)}
             onChange={() => toggle(cat)}
             className="rounded border-slate-300"
+            data-testid={`category-${cat}`}
           />
           {CATEGORY_LABELS[cat]}
         </label>
@@ -114,21 +115,27 @@ function BlackoutPanel({ spaceId, token }: { spaceId: number; token: string }) {
   }
 
   return (
-    <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4">
+    <div
+      className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4"
+      data-testid="blackout-panel"
+    >
       <h3 className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-500">
         Períodos de bloqueo
       </h3>
 
       {loading ? (
-        <p className="text-xs text-slate-400">Cargando…</p>
+        <p className="text-xs text-slate-400" data-testid="blackouts-loading">Cargando…</p>
       ) : blackouts.length === 0 ? (
-        <p className="mb-3 text-xs text-slate-400">Sin bloqueos activos.</p>
+        <p className="mb-3 text-xs text-slate-400" data-testid="blackouts-empty">
+          Sin bloqueos activos.
+        </p>
       ) : (
         <div className="mb-4 space-y-2">
           {blackouts.map((b) => (
             <div
               key={b.id}
               className="flex items-center justify-between rounded-lg bg-white px-3 py-2 ring-1 ring-slate-200 text-sm"
+              data-testid={`blackout-item-${b.id}`}
             >
               <div>
                 <span className="font-medium tabular-nums">
@@ -140,6 +147,7 @@ function BlackoutPanel({ spaceId, token }: { spaceId: number; token: string }) {
                 onClick={() => handleDelete(b.id)}
                 disabled={deletingId === b.id}
                 className="ml-4 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                data-testid="blackout-delete-btn"
               >
                 {deletingId === b.id ? '…' : 'Eliminar'}
               </button>
@@ -157,6 +165,7 @@ function BlackoutPanel({ spaceId, token }: { spaceId: number; token: string }) {
             value={startDate}
             onChange={(e) => setStartDate(e.target.value)}
             className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-slate-900 focus:outline-none"
+            data-testid="blackout-start-date"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -167,6 +176,7 @@ function BlackoutPanel({ spaceId, token }: { spaceId: number; token: string }) {
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
             className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-slate-900 focus:outline-none"
+            data-testid="blackout-end-date"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -177,16 +187,20 @@ function BlackoutPanel({ spaceId, token }: { spaceId: number; token: string }) {
             onChange={(e) => setReason(e.target.value)}
             placeholder="Mantenimiento…"
             className="rounded-lg border border-slate-300 px-2 py-1 text-xs focus:border-slate-900 focus:outline-none"
+            data-testid="blackout-reason"
           />
         </label>
         <div className="flex flex-col gap-1">
           {formError && (
-            <span className="text-xs text-red-600">{formError}</span>
+            <span className="text-xs text-red-600" data-testid="blackout-form-error">
+              {formError}
+            </span>
           )}
           <button
             type="submit"
             disabled={creating}
             className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+            data-testid="blackout-add-btn"
           >
             {creating ? '…' : '+ Agregar bloqueo'}
           </button>
@@ -209,7 +223,6 @@ function SpaceCard({
   const [showBlackouts, setShowBlackouts] = useState(false);
   const [toggling, setToggling] = useState(false);
 
-  // Edit form state
   const [label, setLabel] = useState(space.label);
   const [vehicleType, setVehicleType] = useState<VehicleType>(space.vehicle_type);
   const [categories, setCategories] = useState<Category[]>(space.allowed_categories as Category[]);
@@ -252,12 +265,17 @@ function SpaceCard({
   }
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div
+      className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+      data-testid={`space-card-${space.id}`}
+    >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <span className="text-lg font-bold">{space.label}</span>
-            <span className="text-sm capitalize text-slate-500">
+            <span className="text-lg font-bold" data-testid="space-label">
+              {space.label}
+            </span>
+            <span className="text-sm capitalize text-slate-500" data-testid="space-vehicle-type">
               {TIPO_LABELS[space.vehicle_type] ?? space.vehicle_type}
             </span>
             <span
@@ -266,6 +284,7 @@ function SpaceCard({
                   ? 'bg-emerald-100 text-emerald-700'
                   : 'bg-slate-100 text-slate-500'
               }`}
+              data-testid="space-status-badge"
             >
               {space.is_active ? 'Activo' : 'Inactivo'}
             </span>
@@ -278,6 +297,7 @@ function SpaceCard({
           <button
             onClick={() => setEditing((v) => !v)}
             className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+            data-testid="space-edit-btn"
           >
             {editing ? 'Cancelar edición' : 'Editar'}
           </button>
@@ -289,12 +309,14 @@ function SpaceCard({
                 ? 'bg-red-50 text-red-700 hover:bg-red-100'
                 : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
             }`}
+            data-testid="space-toggle-active-btn"
           >
             {toggling ? '…' : space.is_active ? 'Desactivar' : 'Activar'}
           </button>
           <button
             onClick={() => setShowBlackouts((v) => !v)}
             className="rounded-lg bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700 hover:bg-amber-100"
+            data-testid="space-blackouts-btn"
           >
             {showBlackouts ? 'Ocultar bloqueos' : 'Bloqueos'}
           </button>
@@ -302,7 +324,11 @@ function SpaceCard({
       </div>
 
       {editing && (
-        <form onSubmit={handleSave} className="mt-4 space-y-4 border-t border-slate-100 pt-4">
+        <form
+          onSubmit={handleSave}
+          className="mt-4 space-y-4 border-t border-slate-100 pt-4"
+          data-testid="space-edit-form"
+        >
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <label className="block space-y-1">
               <span className="text-xs font-medium text-slate-600">Etiqueta</span>
@@ -312,6 +338,7 @@ function SpaceCard({
                 value={label}
                 onChange={(e) => setLabel(e.target.value)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+                data-testid="edit-label-input"
               />
             </label>
             <label className="block space-y-1">
@@ -320,6 +347,7 @@ function SpaceCard({
                 value={vehicleType}
                 onChange={(e) => setVehicleType(e.target.value as VehicleType)}
                 className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+                data-testid="edit-vehicle-type"
               >
                 <option value="auto">Auto</option>
                 <option value="moto">Moto</option>
@@ -332,13 +360,19 @@ function SpaceCard({
             <CategoryCheckboxes selected={categories} onChange={setCategories} />
           </div>
           {editError && (
-            <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{editError}</p>
+            <p
+              className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+              data-testid="edit-space-error"
+            >
+              {editError}
+            </p>
           )}
           <div className="flex gap-2">
             <button
               type="submit"
               disabled={saving}
               className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+              data-testid="edit-save-btn"
             >
               {saving ? 'Guardando…' : 'Guardar cambios'}
             </button>
@@ -346,6 +380,7 @@ function SpaceCard({
               type="button"
               onClick={() => setEditing(false)}
               className="rounded-lg bg-slate-100 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+              data-testid="edit-cancel-btn"
             >
               Cancelar
             </button>
@@ -392,6 +427,7 @@ function CreateSpaceForm({ token, onSuccess }: { token: string; onSuccess: () =>
     <form
       onSubmit={onSubmit}
       className="mb-6 space-y-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+      data-testid="create-space-form"
     >
       <h2 className="text-sm font-semibold text-slate-700">Crear espacio</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -404,6 +440,7 @@ function CreateSpaceForm({ token, onSuccess }: { token: string; onSuccess: () =>
             onChange={(e) => setLabel(e.target.value.toUpperCase())}
             placeholder="E-001"
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm uppercase focus:border-slate-900 focus:outline-none"
+            data-testid="create-label-input"
           />
         </label>
         <label className="block space-y-1">
@@ -412,6 +449,7 @@ function CreateSpaceForm({ token, onSuccess }: { token: string; onSuccess: () =>
             value={vehicleType}
             onChange={(e) => setVehicleType(e.target.value as VehicleType)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-vehicle-type"
           >
             <option value="auto">Auto</option>
             <option value="moto">Moto</option>
@@ -424,12 +462,18 @@ function CreateSpaceForm({ token, onSuccess }: { token: string; onSuccess: () =>
         <CategoryCheckboxes selected={categories} onChange={setCategories} />
       </div>
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          data-testid="create-space-error"
+        >
+          {error}
+        </p>
       )}
       <button
         type="submit"
         disabled={loading}
         className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        data-testid="create-space-submit"
       >
         {loading ? 'Creando…' : 'Crear espacio'}
       </button>
@@ -462,10 +506,13 @@ export default function SpacesPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Gestión de parqueos</h1>
+        <h1 className="text-2xl font-semibold" data-testid="spaces-heading">
+          Gestión de parqueos
+        </h1>
         <button
           onClick={() => setShowCreate((v) => !v)}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          data-testid="toggle-create-btn"
         >
           {showCreate ? 'Cancelar' : '+ Crear espacio'}
         </button>
@@ -479,17 +526,20 @@ export default function SpacesPage() {
       )}
 
       {loading ? (
-        <div className="space-y-3">
+        <div className="space-y-3" data-testid="spaces-loading">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-20 animate-pulse rounded-xl bg-slate-200" />
           ))}
         </div>
       ) : spaces.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center">
+        <div
+          className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-16 text-center"
+          data-testid="spaces-empty"
+        >
           <p className="text-slate-500">No hay espacios registrados.</p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="spaces-list">
           {spaces.map((s) => (
             <SpaceCard key={s.id} space={s} token={token!} onRefresh={fetchSpaces} />
           ))}

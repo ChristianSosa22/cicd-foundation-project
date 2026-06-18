@@ -85,11 +85,14 @@ export default function HistoryPage() {
   return (
     <main className="mx-auto max-w-7xl px-6 py-10">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="text-2xl font-semibold">Historial de reservas</h1>
+        <h1 className="text-2xl font-semibold" data-testid="history-heading">
+          Historial de reservas
+        </h1>
         <button
           onClick={handleExport}
           disabled={exporting || reservations.length === 0}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+          data-testid="export-csv-btn"
         >
           {exporting ? 'Exportando…' : 'Exportar CSV'}
         </button>
@@ -103,6 +106,7 @@ export default function HistoryPage() {
             value={filterFrom}
             onChange={(e) => setFilterFrom(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-from"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -112,6 +116,7 @@ export default function HistoryPage() {
             value={filterTo}
             onChange={(e) => setFilterTo(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-to"
           />
         </label>
         <label className="flex flex-col gap-1">
@@ -120,6 +125,7 @@ export default function HistoryPage() {
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-status"
           >
             <option value="">Todos</option>
             <option value="reservada">Reservada</option>
@@ -138,12 +144,14 @@ export default function HistoryPage() {
             onChange={(e) => setFilterUserId(e.target.value)}
             placeholder="Ej. 2"
             className="w-28 rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-user-id"
           />
         </label>
         {hasFilters && (
           <button
             onClick={clearFilters}
             className="text-sm text-slate-400 underline hover:text-slate-700"
+            data-testid="clear-filters-btn"
           >
             Limpiar
           </button>
@@ -151,7 +159,7 @@ export default function HistoryPage() {
       </div>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" data-testid="reservations-table">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left">
               {['#', 'Usuario', 'Espacio', 'Tipo', 'Fecha', 'Estado', 'Creada'].map((h) => (
@@ -161,18 +169,22 @@ export default function HistoryPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
+              <tr data-testid="loading-state">
                 <td colSpan={7} className="px-4 py-14 text-center text-slate-400">Cargando…</td>
               </tr>
             ) : reservations.length === 0 ? (
-              <tr>
+              <tr data-testid="empty-state">
                 <td colSpan={7} className="px-4 py-14 text-center text-slate-400">
                   No hay reservas para los filtros seleccionados.
                 </td>
               </tr>
             ) : (
               reservations.map((r) => (
-                <tr key={r.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                <tr
+                  key={r.id}
+                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                  data-testid={`row-${r.id}`}
+                >
                   <td className="px-4 py-3 tabular-nums text-slate-400">{r.id}</td>
                   <td className="px-4 py-3">
                     <p className="font-medium">{r.user.fullName}</p>
@@ -188,11 +200,14 @@ export default function HistoryPage() {
                       className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                         STATUS_BADGE[r.status] ?? 'bg-slate-100 text-slate-600'
                       }`}
+                      data-testid="status-badge"
                     >
                       {STATUS_LABELS[r.status] ?? r.status}
                     </span>
                     {r.isLateCancellation && (
-                      <span className="ml-1 text-xs text-amber-600">tardía</span>
+                      <span className="ml-1 text-xs text-amber-600" data-testid="late-badge">
+                        tardía
+                      </span>
                     )}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-400">

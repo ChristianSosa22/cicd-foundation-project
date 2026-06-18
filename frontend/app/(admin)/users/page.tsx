@@ -61,6 +61,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
     <form
       onSubmit={onSubmit}
       className="mb-6 space-y-4 rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+      data-testid="create-user-form"
     >
       <h2 className="text-sm font-semibold text-slate-700">Crear usuario</h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -72,6 +73,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-email-input"
           />
         </label>
         <label className="block space-y-1">
@@ -82,6 +84,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-fullname-input"
           />
         </label>
         <label className="block space-y-1">
@@ -93,6 +96,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-password-input"
           />
         </label>
         <label className="block space-y-1">
@@ -102,6 +106,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-phone-input"
           />
         </label>
         <label className="block space-y-1">
@@ -110,6 +115,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
             value={role}
             onChange={(e) => setRole(e.target.value as SystemRole)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="create-role-select"
           >
             <option value="driver">Conductor</option>
             <option value="admin">Administrador</option>
@@ -122,6 +128,7 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
               value={category}
               onChange={(e) => setCategory(e.target.value as Category)}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+              data-testid="create-category-select"
             >
               <option value="ejecutivo">Ejecutivo</option>
               <option value="operativo">Operativo</option>
@@ -131,12 +138,18 @@ function CreateUserForm({ token, onSuccess }: { token: string; onSuccess: () => 
         )}
       </div>
       {error && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+        <p
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          data-testid="create-user-error"
+        >
+          {error}
+        </p>
       )}
       <button
         type="submit"
         disabled={loading}
         className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        data-testid="create-user-submit"
       >
         {loading ? 'Creando…' : 'Crear usuario'}
       </button>
@@ -179,17 +192,23 @@ function EditUserRow({
   }
 
   return (
-    <form onSubmit={onSubmit} className="flex flex-wrap items-center gap-2 mt-2">
+    <form
+      onSubmit={onSubmit}
+      className="flex flex-wrap items-center gap-2 mt-2"
+      data-testid="edit-user-form"
+    >
       <input
         value={fullName}
         onChange={(e) => setFullName(e.target.value)}
         className="rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-slate-900 focus:outline-none"
+        data-testid="edit-fullname-input"
       />
       {user.id !== currentUserId && (
         <select
           value={role}
           onChange={(e) => setRole(e.target.value as SystemRole)}
           className="rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-slate-900 focus:outline-none"
+          data-testid="edit-role-select"
         >
           <option value="driver">Conductor</option>
           <option value="admin">Admin</option>
@@ -200,17 +219,23 @@ function EditUserRow({
           value={category}
           onChange={(e) => setCategory(e.target.value as Category)}
           className="rounded-lg border border-slate-300 px-2 py-1 text-sm focus:border-slate-900 focus:outline-none"
+          data-testid="edit-category-select"
         >
           <option value="ejecutivo">Ejecutivo</option>
           <option value="operativo">Operativo</option>
           <option value="visitante_frecuente">Visitante Frecuente</option>
         </select>
       )}
-      {error && <span className="text-xs text-red-600">{error}</span>}
+      {error && (
+        <span className="text-xs text-red-600" data-testid="edit-user-error">
+          {error}
+        </span>
+      )}
       <button
         type="submit"
         disabled={loading}
         className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+        data-testid="edit-user-save-btn"
       >
         {loading ? '…' : 'Guardar'}
       </button>
@@ -218,6 +243,7 @@ function EditUserRow({
         type="button"
         onClick={onDone}
         className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+        data-testid="edit-user-cancel-btn"
       >
         Cancelar
       </button>
@@ -275,10 +301,13 @@ export default function UsersPage() {
   return (
     <main className="mx-auto max-w-6xl px-6 py-10">
       <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Gestión de usuarios</h1>
+        <h1 className="text-2xl font-semibold" data-testid="users-heading">
+          Gestión de usuarios
+        </h1>
         <button
           onClick={() => setShowCreate((v) => !v)}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          data-testid="toggle-create-btn"
         >
           {showCreate ? 'Cancelar' : '+ Crear usuario'}
         </button>
@@ -299,6 +328,7 @@ export default function UsersPage() {
             value={filterActive}
             onChange={(e) => setFilterActive(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-status"
           >
             <option value="">Todos</option>
             <option value="true">Activos</option>
@@ -311,6 +341,7 @@ export default function UsersPage() {
             value={filterRole}
             onChange={(e) => setFilterRole(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-role"
           >
             <option value="">Todos</option>
             <option value="admin">Admin</option>
@@ -323,6 +354,7 @@ export default function UsersPage() {
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
             className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="filter-category"
           >
             <option value="">Todas</option>
             <option value="ejecutivo">Ejecutivo</option>
@@ -334,6 +366,7 @@ export default function UsersPage() {
           <button
             onClick={() => { setFilterActive(''); setFilterRole(''); setFilterCategory(''); }}
             className="text-sm text-slate-400 underline hover:text-slate-700"
+            data-testid="clear-filters-btn"
           >
             Limpiar
           </button>
@@ -341,7 +374,7 @@ export default function UsersPage() {
       </div>
 
       <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm" data-testid="users-table">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left">
               {['Nombre', 'Correo', 'Rol', 'Categoría', 'Estado', 'Acciones'].map((h) => (
@@ -352,17 +385,31 @@ export default function UsersPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={6} className="px-4 py-14 text-center text-slate-400">Cargando…</td>
+                <td
+                  colSpan={6}
+                  className="px-4 py-14 text-center text-slate-400"
+                  data-testid="users-loading"
+                >
+                  Cargando…
+                </td>
               </tr>
             ) : users.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-14 text-center text-slate-400">
+                <td
+                  colSpan={6}
+                  className="px-4 py-14 text-center text-slate-400"
+                  data-testid="users-empty"
+                >
                   No hay usuarios para los filtros seleccionados.
                 </td>
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-100 last:border-0 align-top hover:bg-slate-50">
+                <tr
+                  key={u.id}
+                  className="border-b border-slate-100 last:border-0 align-top hover:bg-slate-50"
+                  data-testid={`user-row-${u.id}`}
+                >
                   <td className="px-4 py-3">
                     <p className="font-medium">{u.full_name}</p>
                     {editingId === u.id && token && (
@@ -388,6 +435,7 @@ export default function UsersPage() {
                           ? 'bg-emerald-100 text-emerald-700'
                           : 'bg-red-100 text-red-600'
                       }`}
+                      data-testid="user-status-badge"
                     >
                       {u.is_active ? 'Activo' : 'Inactivo'}
                     </span>
@@ -398,6 +446,7 @@ export default function UsersPage() {
                         <button
                           onClick={() => setEditingId(u.id)}
                           className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+                          data-testid="user-edit-btn"
                         >
                           Editar
                         </button>
@@ -410,6 +459,7 @@ export default function UsersPage() {
                             ? 'bg-red-50 text-red-700 hover:bg-red-100'
                             : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                         }`}
+                        data-testid="user-toggle-active-btn"
                       >
                         {toggling === u.id ? '…' : u.is_active ? 'Desactivar' : 'Activar'}
                       </button>

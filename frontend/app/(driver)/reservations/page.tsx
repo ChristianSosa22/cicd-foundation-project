@@ -7,7 +7,6 @@ import {
   getReceiptUrl,
   myReservations,
   reservationAction,
-  type ApiError,
   type MeReservation,
   type Reservation,
 } from '@/lib/api';
@@ -57,7 +56,7 @@ function useCountdown(deadline: string | null): string | null {
 
 function Skeleton() {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" data-testid="active-loading">
       {[1, 2].map((i) => (
         <div key={i} className="h-28 animate-pulse rounded-xl bg-slate-200" />
       ))}
@@ -113,7 +112,10 @@ function ActiveCard({
   const plate = detail?.vehicle?.plate ?? `Vehículo #${reservation.vehicle_id}`;
 
   return (
-    <div className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200">
+    <div
+      className="rounded-xl bg-white p-5 shadow-sm ring-1 ring-slate-200"
+      data-testid={`reservation-card-${reservation.id}`}
+    >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg bg-slate-900 text-sm font-bold text-white">
@@ -133,11 +135,15 @@ function ActiveCard({
               className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                 STATUS_BADGE[reservation.status] ?? 'bg-slate-100 text-slate-600'
               }`}
+              data-testid="reservation-status"
             >
               {STATUS_LABELS[reservation.status] ?? reservation.status}
             </span>
             {reservation.status === 'reservada' && countdown && (
-              <p className={`text-xs font-medium ${countdown === 'Expirado' ? 'text-red-600' : 'text-amber-600'}`}>
+              <p
+                className={`text-xs font-medium ${countdown === 'Expirado' ? 'text-red-600' : 'text-amber-600'}`}
+                data-testid="reservation-countdown"
+              >
                 Confirmar en: {countdown}
               </p>
             )}
@@ -151,6 +157,7 @@ function ActiveCard({
                 onClick={() => handleAction('confirm')}
                 disabled={!!actionLoading}
                 className="rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-60"
+                data-testid="confirm-btn"
               >
                 {actionLoading === 'confirm' ? 'Procesando…' : 'Confirmar llegada'}
               </button>
@@ -158,6 +165,7 @@ function ActiveCard({
                 onClick={() => handleAction('cancel')}
                 disabled={!!actionLoading}
                 className="rounded-lg bg-red-50 px-3 py-1.5 text-xs font-medium text-red-700 hover:bg-red-100 disabled:opacity-60"
+                data-testid="cancel-btn"
               >
                 {actionLoading === 'cancel' ? 'Cancelando…' : 'Cancelar'}
               </button>
@@ -168,6 +176,7 @@ function ActiveCard({
               onClick={() => handleAction('release')}
               disabled={!!actionLoading}
               className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60"
+              data-testid="release-btn"
             >
               {actionLoading === 'release' ? 'Procesando…' : 'Liberar espacio'}
             </button>
@@ -176,6 +185,7 @@ function ActiveCard({
             <button
               onClick={openReceipt}
               className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+              data-testid="receipt-btn"
             >
               Ver comprobante
             </button>
@@ -183,6 +193,7 @@ function ActiveCard({
           <Link
             href={`/receipt?id=${reservation.id}`}
             className="rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-200"
+            data-testid="detail-link"
           >
             Ver detalle
           </Link>
@@ -190,10 +201,18 @@ function ActiveCard({
       </div>
 
       {actionError && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{actionError}</p>
+        <p
+          className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700"
+          data-testid="action-error"
+        >
+          {actionError}
+        </p>
       )}
       {lateCancelWarning && (
-        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700">
+        <p
+          className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-700"
+          data-testid="late-cancel-warning"
+        >
           Esta cancelación es tardía. Ten en cuenta que cancelaciones tardías repetidas pueden afectar tu cuenta.
         </p>
       )}
@@ -244,7 +263,9 @@ export default function ReservationsPage() {
 
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
-      <h1 className="mb-8 text-2xl font-semibold">Mis Reservas</h1>
+      <h1 className="mb-8 text-2xl font-semibold" data-testid="reservations-heading">
+        Mis Reservas
+      </h1>
 
       <section className="mb-10">
         <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
@@ -254,7 +275,10 @@ export default function ReservationsPage() {
         {loading ? (
           <Skeleton />
         ) : active.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center">
+          <div
+            className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center"
+            data-testid="active-empty"
+          >
             <p className="text-slate-500">No tienes reservas activas.</p>
             <a
               href="/availability"
@@ -264,7 +288,7 @@ export default function ReservationsPage() {
             </a>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-3" data-testid="active-list">
             {active.map((r) => (
               <ActiveCard
                 key={r.id}
@@ -283,7 +307,7 @@ export default function ReservationsPage() {
             Historial
           </h2>
           <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-            <table className="w-full text-sm">
+            <table className="w-full text-sm" data-testid="history-table">
               <thead>
                 <tr className="border-b border-slate-200 bg-slate-50 text-left">
                   <th className="px-4 py-3 font-medium text-slate-700">Fecha</th>
@@ -293,7 +317,11 @@ export default function ReservationsPage() {
               </thead>
               <tbody>
                 {history.map((r) => (
-                  <tr key={r.id} className="border-b border-slate-100 last:border-0">
+                  <tr
+                    key={r.id}
+                    className="border-b border-slate-100 last:border-0"
+                    data-testid={`history-row-${r.id}`}
+                  >
                     <td className="px-4 py-3 tabular-nums">
                       {new Date(r.reservation_date + 'T00:00:00').toLocaleDateString('es-GT')}
                     </td>
@@ -302,17 +330,24 @@ export default function ReservationsPage() {
                         className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${
                           STATUS_BADGE[r.status] ?? 'bg-slate-100 text-slate-600'
                         }`}
+                        data-testid="history-status"
                       >
                         {STATUS_LABELS[r.status] ?? r.status}
                       </span>
                       {r.is_late_cancellation && (
-                        <span className="ml-2 text-xs text-amber-600">Cancelación tardía</span>
+                        <span
+                          className="ml-2 text-xs text-amber-600"
+                          data-testid="late-badge"
+                        >
+                          Cancelación tardía
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
                       <Link
                         href={`/receipt?id=${r.id}`}
                         className="text-xs text-slate-500 underline underline-offset-2 hover:text-slate-800"
+                        data-testid="history-detail-link"
                       >
                         Ver detalle
                       </Link>
