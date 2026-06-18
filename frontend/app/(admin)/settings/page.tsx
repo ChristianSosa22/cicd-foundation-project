@@ -52,6 +52,7 @@ function CancellationWindowControl({
             value={hours}
             onChange={(e) => { setHours(e.target.value); setSaved(false); }}
             className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="cancellation-window-input"
           />
           <span className="text-sm text-slate-500">horas</span>
         </div>
@@ -60,12 +61,21 @@ function CancellationWindowControl({
         </p>
       </label>
       <div className="flex flex-col gap-1 pb-0.5">
-        {error && <span className="text-xs text-red-600">{error}</span>}
-        {saved && <span className="text-xs text-emerald-600">Guardado.</span>}
+        {error && (
+          <span className="text-xs text-red-600" data-testid="cancellation-window-error">
+            {error}
+          </span>
+        )}
+        {saved && (
+          <span className="text-xs text-emerald-600" data-testid="cancellation-window-saved">
+            Guardado.
+          </span>
+        )}
         <button
           type="submit"
           disabled={loading}
           className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          data-testid="cancellation-window-save-btn"
         >
           {loading ? 'Guardando…' : 'Guardar'}
         </button>
@@ -110,7 +120,10 @@ function GenericSettingRow({
   }
 
   return (
-    <tr className="border-b border-slate-100 last:border-0">
+    <tr
+      className="border-b border-slate-100 last:border-0"
+      data-testid={`setting-row-${setting.key}`}
+    >
       <td className="px-4 py-3 font-mono text-sm">{setting.key}</td>
       <td className="px-4 py-3 text-sm">
         {editing ? (
@@ -119,24 +132,33 @@ function GenericSettingRow({
               value={value}
               onChange={(e) => setValue(e.target.value)}
               className="flex-1 rounded-lg border border-slate-300 px-2 py-1 text-sm font-mono focus:border-slate-900 focus:outline-none"
+              data-testid="setting-edit-input"
             />
-            {error && <span className="text-xs text-red-600">{error}</span>}
+            {error && (
+              <span className="text-xs text-red-600" data-testid="setting-edit-error">
+                {error}
+              </span>
+            )}
             <button
               onClick={save}
               disabled={loading}
               className="rounded-lg bg-slate-900 px-3 py-1 text-xs font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+              data-testid="setting-save-btn"
             >
               {loading ? '…' : 'Guardar'}
             </button>
             <button
               onClick={() => { setEditing(false); setValue(JSON.stringify(setting.value)); }}
               className="rounded-lg bg-slate-100 px-3 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+              data-testid="setting-cancel-btn"
             >
               Cancelar
             </button>
           </div>
         ) : (
-          <span className="font-mono">{JSON.stringify(setting.value)}</span>
+          <span className="font-mono" data-testid="setting-value">
+            {JSON.stringify(setting.value)}
+          </span>
         )}
       </td>
       <td className="px-4 py-3 text-xs text-slate-400">
@@ -147,6 +169,7 @@ function GenericSettingRow({
           <button
             onClick={() => setEditing(true)}
             className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-200"
+            data-testid="setting-edit-btn"
           >
             Editar
           </button>
@@ -182,19 +205,23 @@ export default function SettingsPage() {
 
   return (
     <main className="mx-auto max-w-4xl px-6 py-10">
-      <h1 className="mb-8 text-2xl font-semibold">Configuración del sistema</h1>
+      <h1 className="mb-8 text-2xl font-semibold" data-testid="settings-heading">
+        Configuración del sistema
+      </h1>
 
       {loading ? (
-        <div className="space-y-4">
+        <div className="space-y-4" data-testid="settings-loading">
           {[1, 2].map((i) => (
             <div key={i} className="h-16 animate-pulse rounded-xl bg-slate-200" />
           ))}
         </div>
       ) : (
         <>
-          {/* First-class control for cancellation window */}
           {cancellationSetting && token && (
-            <section className="mb-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <section
+              className="mb-8 rounded-xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+              data-testid="cancellation-window-section"
+            >
               <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
                 Política de cancelación
               </h2>
@@ -206,14 +233,13 @@ export default function SettingsPage() {
             </section>
           )}
 
-          {/* Generic settings table for other keys */}
           {otherSettings.length > 0 && token && (
-            <section>
+            <section data-testid="other-settings-section">
               <h2 className="mb-4 text-xs font-semibold uppercase tracking-widest text-slate-500">
                 Otras configuraciones
               </h2>
               <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-                <table className="w-full text-sm">
+                <table className="w-full text-sm" data-testid="settings-table">
                   <thead>
                     <tr className="border-b border-slate-200 bg-slate-50 text-left">
                       <th className="px-4 py-3 font-medium text-slate-700">Clave</th>

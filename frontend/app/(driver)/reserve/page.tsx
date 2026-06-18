@@ -42,7 +42,7 @@ function ReserveContent() {
 
   if (!spaceId) {
     return (
-      <main className="px-6 py-20 text-center text-slate-500">
+      <main className="px-6 py-20 text-center text-slate-500" data-testid="no-space-error">
         Espacio no especificado.{' '}
         <button onClick={() => router.push('/availability')} className="underline">
           Volver
@@ -88,17 +88,27 @@ function ReserveContent() {
 
   return (
     <main className="mx-auto max-w-md px-6 py-12">
-      <h1 className="mb-6 text-2xl font-semibold">Reservar espacio</h1>
+      <h1 className="mb-6 text-2xl font-semibold" data-testid="reserve-heading">
+        Reservar espacio
+      </h1>
 
-      <div className="mb-6 rounded-xl bg-white p-4 ring-1 ring-slate-200">
+      <div
+        className="mb-6 rounded-xl bg-white p-4 ring-1 ring-slate-200"
+        data-testid="space-info"
+      >
         <p className="text-xs text-slate-500">Espacio seleccionado</p>
-        <p className="mt-0.5 text-3xl font-bold tracking-tight">{spaceLabel}</p>
-        <p className="mt-0.5 text-sm capitalize text-slate-500">{TIPO_LABELS[spaceTipo] ?? spaceTipo}</p>
+        <p className="mt-0.5 text-3xl font-bold tracking-tight" data-testid="space-label">
+          {spaceLabel}
+        </p>
+        <p className="mt-0.5 text-sm capitalize text-slate-500" data-testid="space-type">
+          {TIPO_LABELS[spaceTipo] ?? spaceTipo}
+        </p>
       </div>
 
       <form
         onSubmit={onConfirm}
         className="space-y-5 rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"
+        data-testid="reserve-form"
       >
         <label className="block space-y-1">
           <span className="text-sm font-medium">Fecha</span>
@@ -109,13 +119,17 @@ function ReserveContent() {
             min={today}
             onChange={(e) => setFecha(e.target.value)}
             className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+            data-testid="reserve-date"
           />
         </label>
 
         <div className="space-y-1">
           <span className="block text-sm font-medium">Vehículo</span>
           {hasNoEligibleVehicles ? (
-            <div className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-700">
+            <div
+              className="rounded-lg bg-amber-50 px-3 py-3 text-sm text-amber-700"
+              data-testid="no-vehicles-warning"
+            >
               <p>No tienes vehículos aprobados de tipo <strong>{TIPO_LABELS[spaceTipo] ?? spaceTipo}</strong> para reservar este espacio.</p>
               <a href="/vehicles" className="mt-1 inline-block underline">
                 Administrar vehículos
@@ -127,6 +141,7 @@ function ReserveContent() {
               value={vehicleId}
               onChange={(e) => setVehicleId(Number(e.target.value))}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-900 focus:outline-none"
+              data-testid="vehicle-select"
             >
               {vehicles.map((v) => (
                 <option key={v.id} value={v.id}>
@@ -138,13 +153,19 @@ function ReserveContent() {
         </div>
 
         {error && (
-          <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
+          <p
+            className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+            data-testid="reserve-error"
+          >
+            {error}
+          </p>
         )}
 
         <button
           type="submit"
           disabled={loading || hasNoEligibleVehicles}
           className="w-full rounded-lg bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-60"
+          data-testid="confirm-btn"
         >
           {loading ? 'Reservando…' : 'Confirmar reserva'}
         </button>
@@ -152,6 +173,7 @@ function ReserveContent() {
           type="button"
           onClick={() => router.back()}
           className="w-full rounded-lg bg-slate-100 px-3 py-2 text-sm font-medium text-slate-700 hover:bg-slate-200"
+          data-testid="back-btn"
         >
           Volver
         </button>

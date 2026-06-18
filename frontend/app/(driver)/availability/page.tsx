@@ -70,7 +70,9 @@ export default function AvailabilityPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <h1 className="text-2xl font-semibold">Disponibilidad</h1>
+        <h1 className="text-2xl font-semibold" data-testid="availability-heading">
+          Disponibilidad
+        </h1>
         <div className="flex flex-wrap gap-3">
           <label className="flex flex-col gap-1">
             <span className="text-xs font-medium text-slate-600">Fecha</span>
@@ -80,6 +82,7 @@ export default function AvailabilityPage() {
               min={today}
               onChange={(e) => setFecha(e.target.value)}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+              data-testid="date-filter"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -88,6 +91,7 @@ export default function AvailabilityPage() {
               value={tipoVehiculo}
               onChange={(e) => setTipoVehiculo(e.target.value)}
               className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm focus:border-slate-900 focus:outline-none"
+              data-testid="vehicle-type-filter"
             >
               <option value="">Todos</option>
               <option value="auto">Auto</option>
@@ -106,24 +110,33 @@ export default function AvailabilityPage() {
           </span>
         ))}
         {lastUpdated && (
-          <span className="ml-auto text-xs text-slate-400">
+          <span className="ml-auto text-xs text-slate-400" data-testid="last-updated">
             {fetching ? 'Actualizando…' : `Actualizado ${lastUpdated.toLocaleTimeString('es-GT')}`}
           </span>
         )}
       </div>
 
       {fetching && spaces.length === 0 ? (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        <div
+          className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
+          data-testid="spaces-loading"
+        >
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="h-24 animate-pulse rounded-2xl bg-slate-200" />
           ))}
         </div>
       ) : spaces.length === 0 ? (
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-20 text-center">
+        <div
+          className="rounded-xl border border-dashed border-slate-300 bg-white px-6 py-20 text-center"
+          data-testid="spaces-empty"
+        >
           <p className="text-slate-500">No hay espacios disponibles para esta categoría o fecha.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
+        <div
+          className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
+          data-testid="spaces-grid"
+        >
           {spaces.map((space) => (
             <button
               key={space.id_espacio}
@@ -133,11 +146,13 @@ export default function AvailabilityPage() {
               className={`flex flex-col items-center gap-1.5 rounded-2xl p-4 text-center ring-1 ring-inset transition-all ${
                 ESTADO_CLASSES[space.estado] ?? 'bg-slate-100 text-slate-600 ring-slate-200'
               }`}
+              data-testid={`space-btn-${space.id_espacio}`}
             >
               <span className="text-2xl leading-none">
                 {TIPO_EMOJI[space.tipo_vehiculo] ?? '🅿️'}
               </span>
               <span className="text-sm font-bold tracking-wide">{space.label}</span>
+              <span className="sr-only" data-testid="space-status">{space.estado}</span>
             </button>
           ))}
         </div>

@@ -57,15 +57,17 @@ export default function DashboardPage() {
   return (
     <main className="mx-auto max-w-5xl px-6 py-10">
       <div className="mb-6 flex items-end justify-between">
-        <h1 className="text-2xl font-semibold">Dashboard de ocupación</h1>
+        <h1 className="text-2xl font-semibold" data-testid="dashboard-heading">
+          Dashboard de ocupación
+        </h1>
         {lastUpdated && (
-          <span className="text-xs text-slate-400">
+          <span className="text-xs text-slate-400" data-testid="last-updated">
             Actualizado {lastUpdated.toLocaleTimeString('es-GT')}
           </span>
         )}
       </div>
 
-      <div className="mb-8 grid grid-cols-3 gap-4">
+      <div className="mb-8 grid grid-cols-3 gap-4" data-testid="occupancy-summary">
         {ESTADOS.map((estado) => {
           const count = totalByEstado(estado);
           const pct = grandTotal > 0 ? Math.round((count / grandTotal) * 100) : 0;
@@ -73,23 +75,29 @@ export default function DashboardPage() {
             <div
               key={estado}
               className={`rounded-xl border p-5 ${ESTADO_CARD[estado] ?? 'bg-slate-50 border-slate-200'}`}
+              data-testid={`card-${estado.toLowerCase()}`}
             >
-              <p className="text-sm font-medium">{estado}</p>
-              <p className="mt-1 text-4xl font-bold tabular-nums">{count}</p>
+              <p className="text-sm font-medium" data-testid="card-status">{estado}</p>
+              <p className="mt-1 text-4xl font-bold tabular-nums" data-testid="card-count">
+                {count}
+              </p>
               <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-black/10">
                 <div
                   className="h-full rounded-full bg-current opacity-40"
                   style={{ width: `${pct}%` }}
+                  data-testid="card-progress-bar"
                 />
               </div>
-              <p className="mt-1 text-xs opacity-60">{pct}% del total</p>
+              <p className="mt-1 text-xs opacity-60" data-testid="card-pct">
+                {pct}% del total
+              </p>
             </div>
           );
         })}
       </div>
 
       <div className="overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-        <table className="w-full table-fixed text-sm">
+        <table className="w-full table-fixed text-sm" data-testid="occupancy-table">
           <colgroup>
             <col className="w-2/6" />
             <col className="w-1/6" />
@@ -110,26 +118,49 @@ export default function DashboardPage() {
           </thead>
           <tbody>
             {ESTADOS.map((estado) => (
-              <tr key={estado} className="border-b border-slate-100 last:border-0">
+              <tr
+                key={estado}
+                className="border-b border-slate-100 last:border-0"
+                data-testid={`row-${estado.toLowerCase()}`}
+              >
                 <td className="px-4 py-3 font-medium">{estado}</td>
                 {TIPOS.map((tipo) => (
-                  <td key={tipo} className="px-4 py-3 text-center tabular-nums">
+                  <td
+                    key={tipo}
+                    className="px-4 py-3 text-center tabular-nums"
+                    data-testid={`cell-${tipo}`}
+                  >
                     {getCount(estado, tipo)}
                   </td>
                 ))}
-                <td className="px-4 py-3 text-center font-semibold tabular-nums">
+                <td
+                  className="px-4 py-3 text-center font-semibold tabular-nums"
+                  data-testid="cell-total"
+                >
                   {totalByEstado(estado)}
                 </td>
               </tr>
             ))}
-            <tr className="border-t-2 border-slate-200 bg-slate-50">
+            <tr
+              className="border-t-2 border-slate-200 bg-slate-50"
+              data-testid="row-totals"
+            >
               <td className="px-4 py-3 font-semibold text-slate-700">Total</td>
               {TIPOS.map((tipo) => (
-                <td key={tipo} className="px-4 py-3 text-center font-semibold tabular-nums">
+                <td
+                  key={tipo}
+                  className="px-4 py-3 text-center font-semibold tabular-nums"
+                  data-testid={`cell-${tipo}`}
+                >
                   {ESTADOS.reduce((s, e) => s + getCount(e, tipo), 0)}
                 </td>
               ))}
-              <td className="px-4 py-3 text-center font-bold tabular-nums">{grandTotal}</td>
+              <td
+                className="px-4 py-3 text-center font-bold tabular-nums"
+                data-testid="cell-total"
+              >
+                {grandTotal}
+              </td>
             </tr>
           </tbody>
         </table>
