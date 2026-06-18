@@ -5,3 +5,9 @@ out
 .env.*
 !.env.example
 npm-debug.log*
+
+# Test runner output
+test-results/
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo

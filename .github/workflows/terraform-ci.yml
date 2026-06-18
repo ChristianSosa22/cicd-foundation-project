@@ -113,21 +113,17 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      - name: Seed database (ECS run-task inside the VPC)
-        # RDS is in a private subnet unreachable from the runner, so the seed
-        # runs as a one-off ECS task INSIDE the VPC, using the API task role
-        # which already has network access to the DB. The seed script is idempotent.
-        # TASKDEF is resolved from describe-task-definition (latest ACTIVE revision)
-        # rather than from the service, which may still reference an older revision
-        # when terraform apply creates a new task definition during the same run.
+      - name: Migrate database (ECS run-task inside the VPC)
+        # Applies any pending Drizzle migration files (drizzle/migrations/) that
+        # have not yet been recorded in the drizzle_migrations table. Idempotent.
+        # Waits for the task to stop and fails the pipeline on non-zero exit so a
+        # broken migration blocks the deploy before the app restarts.
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           SG=$(terraform output -raw app_security_group_id)
           SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
-
-          # Family name = cluster name minus the "-cluster" suffix, plus "-api"
           FAMILY="${CLUSTER%-cluster}-api"
 
           TASKDEF=$(aws ecs describe-task-definition \
@@ -135,7 +131,46 @@ jobs:
             --query 'taskDefinition.taskDefinitionArn' \
             --output text)
 
-          echo "Launching seed task on $CLUSTER using $TASKDEF"
+          echo "Running migrations on $CLUSTER using $TASKDEF"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASKDEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:migrate"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "Waiting for migration task $TASK_ARN..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Migrations applied successfully."
+
+      - name: Seed database — dev only (ECS run-task inside the VPC)
+        # Seeds baseline users, parking spaces, tariffs, and settings for dev.
+        # Idempotent (ON CONFLICT DO NOTHING). Never runs in prod.
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          SG=$(terraform output -raw app_security_group_id)
+          SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
+          FAMILY="${CLUSTER%-cluster}-api"
+
+          TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "Seeding database on $CLUSTER using $TASKDEF"
 
           aws ecs run-task \
             --cluster "$CLUSTER" \
@@ -187,24 +222,41 @@ jobs:
         env:
           TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
 
-      - name: Seed database (ECS run-task inside the VPC)
+      - name: Migrate database (ECS run-task inside the VPC)
+        # Same as dev: applies pending Drizzle migrations, waits, and fails the
+        # pipeline on non-zero exit. No seed step — prod data is never seeded.
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
-          SERVICE=$(terraform output -raw ecs_api_service_name)
           SG=$(terraform output -raw app_security_group_id)
           SUBNETS=$(terraform output -json private_app_subnet_ids | tr -d '[]"' )
+          FAMILY="${CLUSTER%-cluster}-api"
 
-          TASKDEF=$(aws ecs describe-services \
-            --cluster "$CLUSTER" --services "$SERVICE" \
-            --query 'services[0].taskDefinition' --output text)
+          TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
 
-          echo "Launching seed task on $CLUSTER using $TASKDEF"
+          echo "Running migrations on $CLUSTER using $TASKDEF"
 
-          aws ecs run-task \
+          TASK_ARN=$(aws ecs run-task \
             --cluster "$CLUSTER" \
             --task-definition "$TASKDEF" \
             --launch-type FARGATE \
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
-            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:seed"]}]}'
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:migrate"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "Waiting for migration task $TASK_ARN..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            exit 1
+          fi
+          echo "Migrations applied successfully."
