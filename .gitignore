@@ -1,2 +1,9 @@
 # Ignorar todo lo que esté dentro de la carpeta "prompts"
 prompts/
+
+# Root-level node artifacts (accidental installs outside backend/ or frontend/)
+node_modules/
+package-lock.json
+
+# Generated/exported docs
+docs/*.pdf
