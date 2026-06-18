@@ -36,7 +36,7 @@ Suite de pruebas end-to-end para el sistema de reserva de parqueos, construida c
 ```
 automation/
 ├── config/
-│   └── environments.ts          # URLs y configuración por ambiente (local/dev/staging/prod)
+│   └── environments.ts          # URLs y configuración por ambiente (local/dev/prod)
 │
 ├── src/
 │   ├── api/
@@ -133,7 +133,7 @@ cp .env.example .env
 ### 2. Completar las variables
 
 ```dotenv
-# Ambiente objetivo: local | dev | staging | prod
+# Ambiente objetivo: local | dev | prod
 TEST_ENV=local
 
 # Opcional: sobrescribir URLs del ambiente seleccionado
@@ -143,8 +143,6 @@ TEST_ENV=local
 # URLs por ambiente (necesarias cuando TEST_ENV != local)
 # DEV_BASE_URL=http://<dev-alb-dns>
 # DEV_API_URL=http://<dev-alb-dns>
-# STAGING_BASE_URL=http://<staging-alb-dns>
-# STAGING_API_URL=http://<staging-alb-dns>
 # PROD_BASE_URL=http://<prod-alb-dns>
 # PROD_API_URL=http://<prod-alb-dns>
 

@@ -1,4 +1,4 @@
-export type Environment = 'local' | 'dev' | 'staging' | 'prod';
+export type Environment = 'local' | 'dev' | 'prod';
 
 export interface EnvironmentConfig {
   name: Environment;
@@ -16,11 +16,6 @@ const ALL_ENVS: Record<Environment, EnvironmentConfig> = {
     name: 'dev',
     baseUrl: process.env.BASE_URL ?? process.env.DEV_BASE_URL ?? '',
     apiUrl: process.env.API_URL ?? process.env.DEV_API_URL ?? '',
-  },
-  staging: {
-    name: 'staging',
-    baseUrl: process.env.BASE_URL ?? process.env.STAGING_BASE_URL ?? '',
-    apiUrl: process.env.API_URL ?? process.env.STAGING_API_URL ?? '',
   },
   prod: {
     name: 'prod',
