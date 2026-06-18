@@ -1,0 +1,8 @@
+node_modules/
+dist/
+playwright-report/
+test-results/
+.env
+
+# Auth state files contain live session tokens — never commit
+.auth/*.json
