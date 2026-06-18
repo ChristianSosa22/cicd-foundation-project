@@ -7,4 +7,4 @@ npm-debug.log*
 .git
 .gitignore
 *.md
-drizzle/migrations/meta
+# drizzle/migrations/meta is needed by drizzle-orm's migrate() — do not exclude
