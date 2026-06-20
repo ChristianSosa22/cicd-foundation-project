@@ -246,7 +246,8 @@ resource "aws_ecs_task_definition" "web" {
 
     environment = [
       { name = "NODE_ENV", value = "production" },
-      { name = "PORT", value = "3000" }
+      { name = "PORT", value = "3000" },
+      { name = "HOSTNAME", value = "0.0.0.0" }
     ]
 
     # Root path (/) returns 307 → /login, which is < 500, so the check passes
