@@ -5,12 +5,8 @@ test.describe('Login — Conductor', () => {
   test('Inicia sesión con credenciales válidas y es redirigido a disponibilidad', async ({
     loginPage,
   }) => {
-    const email = process.env.CONDUCTOR_EMAIL ?? '';
-    const password = process.env.CONDUCTOR_PASSWORD ?? '';
+    await loginPage.loginAsDriver();
 
-    await loginPage.goto();
-    await loginPage.loginAsDriver(email, password);
-
-    await expect(loginPage.pageInstance).toHaveURL(/\/availability/);
+    await expect(loginPage.conductorPageInstance).toHaveURL(/\/availability/);
   });
 });

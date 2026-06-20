@@ -29,15 +29,9 @@ export default defineConfig({
     timezoneId: 'America/Guatemala',
   },
   projects: [
-    // Auth setup — runs before all test projects
-    {
-      name: 'setup',
-      testMatch: /.*\.setup\.ts/,
-    },
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
     },
   ],
   outputDir: 'test-results',

@@ -1,46 +1,31 @@
-import { expect } from '@playwright/test';
-import { BasePage } from './base.page';
+import type { Page } from '@playwright/test';
 
-export class LoginPage extends BasePage {
+export class LoginPage {
   static readonly PATH = '/login';
 
-  private readonly emailInput = this.page.locator('input[type="email"]');
-  private readonly passwordInput = this.page.locator('input[type="password"]');
-  private readonly submitButton = this.page.getByRole('button', { name: /ingresar/i });
+  constructor(
+    private readonly adminPage: Page,
+    private readonly conductorPage: Page,
+  ) {}
 
-  async goto(): Promise<void> {
-    await this.page.goto(LoginPage.PATH);
-    await this.page.waitForLoadState('networkidle');
+  get adminPageInstance(): Page { return this.adminPage; }
+  get conductorPageInstance(): Page { return this.conductorPage; }
+
+  async loginAsAdmin(): Promise<void> {
+    await this.adminPage.goto(LoginPage.PATH);
+    await this.adminPage.waitForLoadState('networkidle');
+    await this.adminPage.locator('input[type="email"]').fill(process.env.ADMIN_EMAIL!);
+    await this.adminPage.locator('input[type="password"]').fill(process.env.ADMIN_PASSWORD!);
+    await this.adminPage.getByRole('button', { name: /ingresar/i }).click();
+    await this.adminPage.waitForURL('**/dashboard', { timeout: 15_000 });
   }
 
-  async login(email: string, password: string): Promise<void> {
-    await this.emailInput.fill(email);
-    await this.passwordInput.fill(password);
-    await this.submitButton.click();
-  }
-
-  async loginAsAdmin(email: string, password: string): Promise<void> {
-    await this.login(email, password);
-    await this.page.waitForURL('**/dashboard', { timeout: 15_000 });
-  }
-
-  async loginAsDriver(email: string, password: string): Promise<void> {
-    await this.login(email, password);
-    await this.page.waitForURL('**/availability', { timeout: 15_000 });
-  }
-
-  async expectFormVisible(): Promise<void> {
-    await expect(this.emailInput).toBeVisible();
-    await expect(this.passwordInput).toBeVisible();
-    await expect(this.submitButton).toBeVisible();
-  }
-
-  async expectLoginError(): Promise<void> {
-    const error = this.page.locator('.bg-red-50');
-    await expect(error).toBeVisible();
-  }
-
-  async isSubmitDisabled(): Promise<boolean> {
-    return this.submitButton.isDisabled();
+  async loginAsDriver(): Promise<void> {
+    await this.conductorPage.goto(LoginPage.PATH);
+    await this.conductorPage.waitForLoadState('networkidle');
+    await this.conductorPage.locator('input[type="email"]').fill(process.env.CONDUCTOR_EMAIL!);
+    await this.conductorPage.locator('input[type="password"]').fill(process.env.CONDUCTOR_PASSWORD!);
+    await this.conductorPage.getByRole('button', { name: /ingresar/i }).click();
+    await this.conductorPage.waitForURL('**/availability', { timeout: 15_000 });
   }
 }

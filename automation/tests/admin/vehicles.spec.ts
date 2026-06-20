@@ -3,37 +3,48 @@ import { test } from '../../src/fixtures';
 import { buildVehicleOfType } from '../../test-data';
 
 test.describe('Aprobación de Vehículos', () => {
-  test('Aprueba un vehículo pendiente y desaparece de Pendientes y aparece en Aprobados', async ({
-    adminVehicles,
-    apiClient,
-  }) => {
-    // Pre-condición: Registrar un vehículo como conductor 
-    const { token: conductorToken } = await apiClient.login(
-      process.env.CONDUCTOR_EMAIL!,
-      process.env.CONDUCTOR_PASSWORD!,
+  let vehicleId: number;
+  let plate: string;
+
+  test.beforeEach(async ({ loginPage, driverVehiclesPage }) => {
+    ({ plate } = buildVehicleOfType('auto'));
+    await loginPage.loginAsDriver();
+
+    // Pre-condición: conductor registra el vehículo vía UI
+    await driverVehiclesPage.goto();
+
+    const vehicleResponsePromise = driverVehiclesPage.pageInstance.waitForResponse(
+      (r) =>
+        r.url().includes('/me/vehicles') &&
+        r.request().method() === 'POST' &&
+        r.ok(),
     );
+    await driverVehiclesPage.registerVehicle(plate, 'auto');
+    ({ id: vehicleId } = await (await vehicleResponsePromise).json());
+  });
 
-    const { plate } = buildVehicleOfType('auto');
-
-    const vehicle = await apiClient.withToken(conductorToken).createVehicle(plate, 'auto');
-    const vehicleId = vehicle.id;
+  test('Aprueba un vehículo pendiente y desaparece de Pendientes y aparece en Aprobados', async ({
+    loginPage,
+    adminVehiclesPage,
+  }) => {
+    await loginPage.loginAsAdmin();
 
     // Navegar a Aprobación de vehículos y aprobar
-    await adminVehicles.goto();
+    await adminVehiclesPage.goto();
 
     // El vehículo debe aparecer en la sección Pendientes
-    await expect(adminVehicles.pendingRow(vehicleId)).toBeVisible();
+    await expect(adminVehiclesPage.pendingRow(vehicleId)).toBeVisible();
 
     // Aprobar desde la UI
-    await adminVehicles.approveVehicle(vehicleId);
+    await adminVehiclesPage.approveVehicle(vehicleId);
 
     // Assert: Ya no aparece en Pendientes
-    await expect(adminVehicles.pendingRow(vehicleId)).toBeHidden();
+    await expect(adminVehiclesPage.pendingRow(vehicleId)).toBeHidden();
 
     // Assert: Aparece en la tabla de Aprobados con los datos correctos
-    await adminVehicles.showApproved();
+    await adminVehiclesPage.showApproved();
 
-    const approvedRow = adminVehicles.approvedRow(vehicleId);
+    const approvedRow = adminVehiclesPage.approvedRow(vehicleId);
     await expect(approvedRow).toBeVisible();
     await expect(approvedRow).toContainText(plate);
     await expect(approvedRow).toContainText('Auto');
