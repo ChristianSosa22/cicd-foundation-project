@@ -79,7 +79,7 @@ resource "aws_ecs_task_definition" "worker" {
   network_mode             = "awsvpc"
   cpu                      = var.worker_cpu
   memory                   = var.worker_memory
-  execution_role_arn       = aws_iam_role.ecs_task_exec.arn
+  execution_role_arn       = var.compute_exec_role_arn
   task_role_arn            = aws_iam_role.worker_task.arn
 
   container_definitions = jsonencode([{
