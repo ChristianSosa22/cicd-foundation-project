@@ -59,3 +59,15 @@ output "route53_zone_id" {
   description = "Route 53 hosted zone ID (only when enable_tls is true). Useful for adding additional DNS records."
   value       = var.enable_tls ? data.aws_route53_zone.this[0].zone_id : ""
 }
+
+# ── CloudWatch alarm dimensions ───────────────────────────────────────────────
+
+output "alb_arn_suffix" {
+  description = "ARN suffix of the ALB (e.g. app/my-alb/1234abcd). Use this as the LoadBalancer dimension in CloudWatch ALB metric alarms and dashboard widgets."
+  value       = aws_lb.this.arn_suffix
+}
+
+output "api_target_group_arn_suffix" {
+  description = "ARN suffix of the API target group (e.g. targetgroup/my-tg/1234abcd). Use this as the TargetGroup dimension in CloudWatch ALB metric alarms."
+  value       = aws_lb_target_group.api.arn_suffix
+}

@@ -33,19 +33,124 @@ El módulo `infra/modules/iam/` crea 7 roles centralizados con mínimo privilegi
 
 ## 3. OIDC federation
 
-<!-- Pendiente: Estudiante B describe el OIDC provider, audience, subject claim y eliminación de credenciales estáticas -->
+**Estado:** Implementado — `infra/bootstrap/oidc.tf`.
 
-**Estado:** Pendiente — será implementado por el Estudiante B (Deliverable C).
+### Recursos provisionados
 
-El CI runner role en el módulo IAM ya tiene la trust policy parameterizada con `repo:ChristianSosa22/cicd-foundation-project:ref:refs/heads/main`. Una vez que Estudiante B provisione el OIDC provider, debe pasarlo al módulo via `oidc_provider_arn`.
+| Recurso Terraform | Nombre AWS | Propósito |
+|---|---|---|
+| `aws_iam_openid_connect_provider.github_actions` | — | OIDC provider que federa GitHub Actions con AWS STS |
+| `aws_iam_role.gha_deploy_dev` | `gha-deploy-dev` | Rol asumido por los jobs de CI en environment `dev` |
+| `aws_iam_role.gha_deploy_prod` | `gha-deploy-prod` | Rol asumido por los jobs de CI en environment `prod` |
+
+### Configuración del OIDC provider
+
+- **URL del proveedor:** `https://token.actions.githubusercontent.com`
+- **Audience (`client_id_list`):** `sts.amazonaws.com`
+- **Thumbprint:** `1c58a3a8518e8759bf075b76b750d4f2df264fcd` (CA raíz de GitHub Actions)
+
+### Subject claims (trust policy de cada rol)
+
+Los roles restringen qué tokens de GitHub Actions pueden hacer `AssumeRoleWithWebIdentity` usando la condición `StringLike` sobre el claim `sub`:
+
+| Rol | Subject claim |
+|---|---|
+| `gha-deploy-dev` | `repo:ChristianSosa22/cicd-foundation-project:environment:dev` y `repo:...:ref:refs/heads/main` |
+| `gha-deploy-prod` | `repo:ChristianSosa22/cicd-foundation-project:environment:prod` y `repo:...:ref:refs/heads/main` |
+
+Solo los workflows que corren en el ambiente correcto (o desde `main`) pueden asumir cada rol.
+
+### Integración con los workflows de GitHub Actions
+
+Los tres workflows (`.github/workflows/terraform-ci.yml`, `destroy.yml`, `drift-detection.yml`) autentican con OIDC de forma idéntica:
+
+```yaml
+permissions:
+  id-token: write   # obligatorio para solicitar el token OIDC
+  contents: read
+
+- uses: aws-actions/configure-aws-credentials@v4
+  with:
+    role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}   # ARN del rol de deploy
+    aws-region: ${{ vars.AWS_REGION }}
+```
+
+Los ARNs de los roles se almacenan como **GitHub Variables** (`vars.AWS_DEPLOY_ROLE_ARN`, `vars.AWS_DEPLOY_ROLE_ARN_DEV`, `vars.AWS_DEPLOY_ROLE_ARN_PROD`), no como secrets. **No existe ninguna llave de acceso estática** (`aws-access-key-id` / `aws-secret-access-key`) en el repositorio.
 
 ---
 
 ## 4. Observability design
 
-<!-- Pendiente: Estudiante B describe las alarmas, dashboard y presupuesto de costos -->
+**Estado:** Implementado — `infra/modules/observability/` (6 archivos: `main.tf`, `alarms.tf`, `dashboard.tf`, `budget.tf`, `variables.tf`, `outputs.tf`).
 
-**Estado:** Pendiente — será implementado por el Estudiante B (Deliverable E).
+### Arquitectura del módulo
+
+```
+infra/modules/observability/
+├── main.tf       → SNS topic + suscripción email + CloudWatch log group
+├── alarms.tf     → 2 alarmas métricas (5xx y release-DLQ)
+├── dashboard.tf  → Dashboard dinámico con jsonencode()
+├── budget.tf     → AWS Budget mensual
+├── variables.tf  → Dimensiones de alarma, email, retención, límite de gasto
+└── outputs.tf    → sns_topic_arn, alarm_arns, dashboard_name, budget_name
+```
+
+Todas las dimensiones de alarma y los nombres del dashboard se interpolan desde variables → el módulo es reutilizable en `dev`, `staging` y `prod` sin hardcoding.
+
+### Notificaciones (SNS)
+
+- `aws_sns_topic` → `oyd-project-<env>-alerts`
+- `aws_sns_topic_subscription` (protocol `email`) → `christiansosa2204@gmail.com`
+- Tanto las alarmas como el budget usan este topic como único sink de notificaciones.
+
+> Tras el primer `terraform apply`, AWS envía un correo de confirmación. La suscripción no entrega mensajes hasta que se confirme el link.
+
+### Retención de logs
+
+- `aws_cloudwatch_log_group` → `/observability/oyd-project-<env>/app`
+- `retention_in_days = 30` (dev) — configurable por entorno vía variable `observability_log_retention_days`.
+- Log group separado de los grupos ECS que gestiona el módulo `compute`; sirve como destino para filtros de métrica personalizados y logs de auditoría centralizados.
+
+### Alarmas métricas
+
+| # | Nombre | Métrica | Umbral | Ventana | Severidad |
+|---|---|---|---|---|---|
+| 1 | `api-5xx-spike` | `AWS/ApplicationELB` → `HTTPCode_Target_5XX_Count` | > 5 errores | 5 períodos × 60 s | High |
+| 2 | `release-dlq-message` | `AWS/SQS` → `ApproximateNumberOfMessagesVisible` | > 0 mensajes | 5 períodos × 60 s | Critical |
+
+**Justificación de selección:**
+- **Alarma 1 (5xx):** Cualquier ráfaga de errores en ventana de 5 minutos durante el pico matutino (7–9 AM) bloquea a usuarios de reservar espacios. Umbral de 5 absorbe errores transitorios aislados sin disparar falsos positivos.
+- **Alarma 2 (release-DLQ):** Un solo mensaje en la DLQ de release indica que ninguno de los dos paths de liberación (cron in-process + EventBridge) funcionó. Los espacios quedan marcados como ocupados el resto del día — impacto operacional inmediato.
+
+### Dashboard dinámico (`jsonencode`)
+
+`aws_cloudwatch_dashboard` con `dashboard_body = jsonencode({ widgets = [...] })`. Cuatro widgets dispuestos en cuadrícula de 24 columnas:
+
+| Posición | Título | Métrica(s) |
+|---|---|---|
+| Fila 0, col 0–11 | API HTTP Error Rates (5xx / 4xx) | `HTTPCode_Target_5XX_Count`, `HTTPCode_Target_4XX_Count` |
+| Fila 0, col 12–23 | API Request Volume | `RequestCount` |
+| Fila 6, col 0–11 | API Response Time (p50 / p95 / p99) | `TargetResponseTime` con stat por percentil |
+| Fila 6, col 12–23 | Release DLQ — Messages Visible | `ApproximateNumberOfMessagesVisible` |
+
+Las dimensiones `LoadBalancer`, `TargetGroup` y `QueueName` se inyectan como variables → el mismo código genera el dashboard correcto para cualquier entorno.
+
+### Presupuesto de costos (AWS Budget)
+
+- **Tipo:** `COST`, `time_unit = MONTHLY`, `limit_amount = "30"` USD
+- **Notificación 1:** 80 % del gasto **forecasted** → alerta temprana
+- **Notificación 2:** 100 % del gasto **actual** → límite alcanzado
+- El plan de observabilidad estima $23–27/mes; el límite de $30 deja margen sin ocultar derivas de costo.
+
+### Cambios en módulos existentes
+
+Para exponer las dimensiones que necesitan las alarmas se añadieron outputs a módulos pre-existentes:
+
+| Módulo | Output añadido | Valor |
+|---|---|---|
+| `modules/alb` | `alb_arn_suffix` | `aws_lb.this.arn_suffix` |
+| `modules/alb` | `api_target_group_arn_suffix` | `aws_lb_target_group.api.arn_suffix` |
+| `modules/async` | `dlq_name` | `aws_sqs_queue.dlq.name` |
 
 ---
 

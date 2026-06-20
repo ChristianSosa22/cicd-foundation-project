@@ -197,6 +197,32 @@ module "iam" {
   oidc_provider_arn   = ""
 }
 
+module "observability" {
+  source = "./modules/observability"
+
+  name        = var.project_name
+  environment = var.environment
+  region      = var.region
+
+  # Notifications
+  alert_email = var.alert_email
+
+  # Log retention
+  log_retention_days = var.observability_log_retention_days
+
+  # Budget
+  monthly_budget_limit = var.monthly_budget_limit
+
+  # ALB alarm dimensions — arn_suffix outputs added to the alb module
+  alb_arn_suffix              = module.alb.alb_arn_suffix
+  api_target_group_arn_suffix = module.alb.api_target_group_arn_suffix
+
+  # Release DLQ alarm dimension — dlq_name output added to the async module
+  release_dlq_name = module.async_release.dlq_name
+
+  depends_on = [module.alb, module.async_release]
+}
+
 module "alb" {
   source = "./modules/alb"
 

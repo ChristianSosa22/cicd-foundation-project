@@ -264,6 +264,26 @@ variable "github_repo" {
   default     = "ChristianSosa22/cicd-foundation-project"
 }
 
+# ── Observability module ──────────────────────────────────────────────────────
+
+variable "alert_email" {
+  description = "Email address for SNS alarm and AWS Budget notifications. Must confirm the subscription after the first apply."
+  type        = string
+  default     = "christiansosa2204@gmail.com"
+}
+
+variable "monthly_budget_limit" {
+  description = "Monthly AWS cost budget limit in USD (string). Alerts fire at 80 % forecasted and 100 % actual. Example: \"30\"."
+  type        = string
+  default     = "30"
+}
+
+variable "observability_log_retention_days" {
+  description = "Retention period in days for the observability CloudWatch log group. Use 30 for dev and 90 for production."
+  type        = number
+  default     = 30
+}
+
 # ── TLS / HTTPS ───────────────────────────────────────────────────────────────
 
 variable "enable_tls" {

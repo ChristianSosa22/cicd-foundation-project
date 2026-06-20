@@ -269,3 +269,20 @@ output "app_fqdn" {
   description = "Fully-qualified domain name of the application (Route 53 alias record)."
   value       = module.alb.app_fqdn
 }
+
+# ── Observability ─────────────────────────────────────────────────────────────
+
+output "observability_sns_topic_arn" {
+  description = "ARN of the SNS alerts topic. Subscribe additional endpoints (Slack, PagerDuty) here for multi-channel notifications."
+  value       = module.observability.sns_topic_arn
+}
+
+output "observability_dashboard_name" {
+  description = "Name of the CloudWatch dashboard. Open it at https://console.aws.amazon.com/cloudwatch/home#dashboards:name=<value>."
+  value       = module.observability.dashboard_name
+}
+
+output "observability_budget_name" {
+  description = "Name of the AWS Budget. Verify it at https://console.aws.amazon.com/billing/home#/budgets."
+  value       = module.observability.budget_name
+}
