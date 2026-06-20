@@ -116,6 +116,7 @@ module "scheduler" {
   scheduler_timezone  = var.scheduler_timezone
   target_queue_arn    = module.async_release.queue_arn
   target_message      = var.scheduler_target_message
+  scheduler_role_arn  = module.iam.scheduler_role_arn
 }
 
 module "compute" {
@@ -144,6 +145,10 @@ module "compute" {
 
   # Secret ARNs from SSM — Fargate pulls values at container start
   secret_arns = module.secrets.parameter_arns
+
+  # IAM roles from the centralized IAM module
+  compute_exec_role_arn = module.iam.compute_exec_role_arn
+  compute_task_role_arn = module.iam.compute_task_role_arn
 
   # IAM: scope the API task role to the receipts bucket
   receipts_bucket_arn = module.storage.bucket_arn

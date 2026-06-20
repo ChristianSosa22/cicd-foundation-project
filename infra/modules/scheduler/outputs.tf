@@ -9,6 +9,6 @@ output "schedule_name" {
 }
 
 output "scheduler_role_arn" {
-  description = "ARN of the IAM role assumed by EventBridge Scheduler. Scoped to sqs:SendMessage on the target queue only."
-  value       = aws_iam_role.scheduler.arn
+  description = "ARN of the IAM role assumed by EventBridge Scheduler. Scoped to sqs:SendMessage on the target queue only. Sourced from the IAM module."
+  value       = var.scheduler_role_arn
 }
