@@ -179,6 +179,28 @@ jobs:
             --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=DISABLED}" \
             --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:seed"]}]}'
 
+      - name: Deploy services to ECS (roll onto latest task definition)
+        # terraform apply registers new task-def revisions but the services use
+        # ignore_changes=[task_definition], so they must be repointed explicitly.
+        # Using the family name (no :revision suffix) resolves to the newest ACTIVE revision.
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          PREFIX="${CLUSTER%-cluster}"
+          for SVC in api web worker; do
+            echo "Deploying $PREFIX-$SVC-svc ..."
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$PREFIX-$SVC-svc" \
+              --task-definition "$PREFIX-$SVC" \
+              --force-new-deployment >/dev/null
+          done
+          for SVC in api web worker; do
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+          done
+          echo "All services rolled onto latest task definitions."
+
   # ── Deploy prod (runs after dev succeeds, gated by required reviewer) ──────
   # Requires a human approval in the 'production' GitHub Environment before
   # Terraform applies. Configure the reviewer in:
@@ -260,3 +282,25 @@ jobs:
             exit 1
           fi
           echo "Migrations applied successfully."
+
+      - name: Deploy services to ECS (roll onto latest task definition)
+        # terraform apply registers new task-def revisions but the services use
+        # ignore_changes=[task_definition], so they must be repointed explicitly.
+        # Using the family name (no :revision suffix) resolves to the newest ACTIVE revision.
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          PREFIX="${CLUSTER%-cluster}"
+          for SVC in api web worker; do
+            echo "Deploying $PREFIX-$SVC-svc ..."
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$PREFIX-$SVC-svc" \
+              --task-definition "$PREFIX-$SVC" \
+              --force-new-deployment >/dev/null
+          done
+          for SVC in api web worker; do
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+          done
+          echo "All services rolled onto latest task definitions."
