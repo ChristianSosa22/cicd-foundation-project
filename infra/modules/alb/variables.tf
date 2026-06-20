@@ -50,7 +50,7 @@ variable "api_health_check_path" {
 variable "api_path_patterns" {
   description = "List of listener path patterns routed to the API target group. Everything not matching falls through to the web target group. All backend routes share the /api prefix so a single pattern covers them all."
   type        = list(string)
-  default     = ["/api/*", "/availability*", "/reservar*", "/reservations/*", "/health"]
+  default     = ["/api/*", "/health"]
 }
 
 # ── TLS / HTTPS ───────────────────────────────────────────────────────────────
