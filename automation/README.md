@@ -39,15 +39,10 @@ automation/
 │   └── environments.ts          # URLs y configuración por ambiente (local/dev/prod)
 │
 ├── src/
-│   ├── api/
-│   │   ├── client.ts            # ApiClient: llamadas REST directas para setup/teardown
-│   │   └── endpoints.ts         # Mapa de todos los endpoints de la API
-│   │
 │   ├── fixtures/
-│   │   └── index.ts             # Fixtures de Playwright con contextos autenticados y page objects
+│   │   └── index.ts             # Fixtures de Playwright con contextos y page objects
 │   │
 │   ├── helpers/
-│   │   ├── auth.helper.ts       # Inyección de JWT en localStorage
 │   │   └── date.helper.ts       # Utilidades de fechas (today, tomorrow, nextWeekday, etc.)
 │   │
 │   ├── pages/
@@ -74,21 +69,13 @@ automation/
 │   ├── index.ts                 # Re-exportaciones de todas las factories
 │   └── factories/
 │       ├── user.factory.ts      # buildUser, buildAdminUser, buildDriverUser
-│       ├── vehicle.factory.ts   # buildVehicle, buildVehicleOfType
-│       └── reservation.factory.ts # buildReservation
+│       └── vehicle.factory.ts   # buildVehicle, buildVehicleOfType
 │
 ├── tests/
-│   ├── auth/                    # Setup de estado de autenticación (no son tests)
-│   │   ├── admin.setup.ts       # Genera .auth/admin.json
-│   │   └── conductor.setup.ts   # Genera .auth/conductor.json
 │   ├── admin/                   # Tests del rol Administrador
 │   │   └── login.spec.ts
 │   └── conductor/               # Tests del rol Conductor
 │       └── login.spec.ts
-│
-├── .auth/                       # Estado de sesión generado (gitignored)
-│   ├── admin.json
-│   └── conductor.json
 │
 ├── .env                         # Variables de entorno locales (gitignored)
 ├── .env.example                 # Plantilla de variables de entorno
@@ -136,15 +123,9 @@ cp .env.example .env
 # Ambiente objetivo: local | dev | prod
 TEST_ENV=local
 
-# Opcional: sobrescribir URLs del ambiente seleccionado
-# BASE_URL=http://localhost:3000
-# API_URL=http://localhost:8080
-
 # URLs por ambiente (necesarias cuando TEST_ENV != local)
 # DEV_BASE_URL=http://<dev-alb-dns>
-# DEV_API_URL=http://<dev-alb-dns>
 # PROD_BASE_URL=http://<prod-alb-dns>
-# PROD_API_URL=http://<prod-alb-dns>
 
 # Credenciales de prueba
 ADMIN_EMAIL=admin@example.com
@@ -154,12 +135,11 @@ CONDUCTOR_EMAIL=conductor@example.com
 CONDUCTOR_PASSWORD=tu_password_conductor
 ```
 
-### URLs por defecto para `TEST_ENV=local`
+### URL por defecto para `TEST_ENV=local`
 
 | Servicio | URL por defecto |
 |---|---|
 | Frontend (Next.js) | `http://localhost:3000` |
-| API (backend) | `http://localhost:8080` |
 
 ---
 
@@ -225,29 +205,41 @@ npm run typecheck
 
 ## Estrategia de autenticación
 
-Los tests **no realizan login a través de la UI** en cada ejecución. En su lugar, el proyecto usa un mecanismo en dos fases:
-
-### Fase 1 — Setup (se ejecuta una vez antes de todos los tests)
-
-Los archivos `tests/auth/admin.setup.ts` y `tests/auth/conductor.setup.ts` obtienen un JWT directamente de la API mediante una llamada `POST /auth/login` y lo inyectan en el `localStorage` del navegador bajo la clave `parking.session`. El estado resultante se guarda en `.auth/admin.json` y `.auth/conductor.json`.
-
-```
-POST /auth/login  →  JWT  →  localStorage['parking.session']  →  .auth/*.json
-```
-
-### Fase 2 — Tests
-
-Los fixtures `adminContext` y `conductorContext` cargan el estado guardado al crear el contexto del navegador, evitando el login en cada test.
+Todos los tests realizan el login **a través de la UI** al inicio de cada ejecución. El fixture `loginPage` expone dos métodos que navegan a `/login` y completan el formulario en el contexto del rol correspondiente:
 
 ```typescript
-// Ejemplo de uso en un test
-test('Navegar al dashboard', async ({ adminDashboard }) => {
-  await adminDashboard.goto();
-  expect(await adminDashboard.isLoaded()).toBe(true);
+// Login como administrador (opera sobre adminPage)
+await loginPage.loginAsAdmin();
+
+// Login como conductor (opera sobre conductorPage)
+await loginPage.loginAsDriver();
+```
+
+Cada método incluye la navegación a `/login` y espera a que la redirección post-login se complete antes de continuar.
+
+```typescript
+// Patrón típico en beforeEach para tests de administrador
+test.beforeEach(async ({ loginPage, adminSpaces }) => {
+  await loginPage.loginAsAdmin();
+  await adminSpaces.goto();
 });
 ```
 
-> Los archivos `.auth/` están en `.gitignore` y se regeneran en cada ejecución de CI.
+Para tests que requieren acciones de ambos roles (p. ej. conductor registra un vehículo y admin lo aprueba), ambos contextos pueden autenticarse en el mismo test ya que operan en páginas independientes:
+
+```typescript
+test.beforeEach(async ({ loginPage, driverVehicles }) => {
+  await loginPage.loginAsDriver();   // autentica conductorPage
+  await driverVehicles.goto();
+  // ... pre-condición del conductor
+});
+
+test('...', async ({ loginPage, adminVehicles }) => {
+  await loginPage.loginAsAdmin();    // autentica adminPage
+  await adminVehicles.goto();
+  // ...
+});
+```
 
 ---
 
@@ -304,22 +296,21 @@ El archivo `src/fixtures/index.ts` extiende `test` de Playwright con los siguien
 
 | Fixture | Tipo | Descripción |
 |---|---|---|
-| `adminContext` | `BrowserContext` | Contexto autenticado como administrador |
-| `conductorContext` | `BrowserContext` | Contexto autenticado como conductor |
-| `adminPage` | `Page` | Página autenticada como administrador |
-| `conductorPage` | `Page` | Página autenticada como conductor |
-| `apiClient` | `ApiClient` | Cliente de API sin autenticar (usar `.withToken(token)`) |
-| `loginPage` | `LoginPage` | Página de login (sin autenticación previa) |
-| `adminDashboard` | `AdminDashboardPage` | — |
-| `adminUsers` | `AdminUsersPage` | — |
-| `adminVehicles` | `AdminVehiclesPage` | — |
-| `adminSpaces` | `AdminSpacesPage` | — |
-| `adminTariffs` | `AdminTariffsPage` | — |
-| `adminReservations` | `AdminReservationsPage` | — |
-| `adminSettings` | `AdminSettingsPage` | — |
+| `adminContext` | `BrowserContext` | Contexto de navegador para el rol administrador |
+| `conductorContext` | `BrowserContext` | Contexto de navegador para el rol conductor |
+| `adminPage` | `Page` | Página del contexto administrador |
+| `conductorPage` | `Page` | Página del contexto conductor |
+| `loginPage` | `LoginPage` | Login compartido; `loginAsAdmin()` opera en `adminPage` y `loginAsDriver()` en `conductorPage` |
+| `adminDashboardPage` | `AdminDashboardPage` | — |
+| `adminUsersPage` | `AdminUsersPage` | — |
+| `adminVehiclesPage` | `AdminVehiclesPage` | — |
+| `adminSpacesPage` | `AdminSpacesPage` | — |
+| `adminTariffsPage` | `AdminTariffsPage` | — |
+| `adminReservationsPage` | `AdminReservationsPage` | — |
+| `adminSettingsPage` | `AdminSettingsPage` | — |
 | `availabilityPage` | `AvailabilityPage` | — |
-| `driverVehicles` | `DriverVehiclesPage` | — |
-| `driverReservations` | `DriverReservationsPage` | — |
+| `driverVehiclesPage` | `DriverVehiclesPage` | — |
+| `driverReservationsPage` | `DriverReservationsPage` | — |
 | `reservePage` | `ReservePage` | — |
 
 ```typescript
@@ -334,18 +325,15 @@ import { test, expect } from '../src/fixtures';
 Las factories usan **Faker.js** para generar datos realistas y únicos. Importarlas desde `test-data`:
 
 ```typescript
-import { buildDriverUser, buildVehicleOfType, buildReservation } from '../test-data';
+import { buildDriverUser, buildVehicleOfType } from '../test-data';
 
 // Usuario conductor con categoría específica
 const userData = buildDriverUser('ejecutivo');
 // → { email: 'juan.perez@example.com', full_name: 'Juan Pérez', password: '...', ... }
 
-// Vehículo de un tipo específico (placa formato guatemalteco ABC-123)
+// Vehículo de un tipo específico (placa formato guatemalteco ABC-1234)
 const vehicleData = buildVehicleOfType('auto');
-// → { plate: 'XYZ-456', vehicle_type: 'auto' }
-
-// Reserva con overrides
-const reservationData = buildReservation(spaceId, vehicleId, { reservation_date: '2026-07-01' });
+// → { plate: 'XYZ-4567', vehicle_type: 'auto' }
 ```
 
 ### Factories disponibles
@@ -355,9 +343,8 @@ const reservationData = buildReservation(spaceId, vehicleId, { reservation_date:
 | `buildUser(overrides?)` | Usuario genérico |
 | `buildAdminUser(overrides?)` | Usuario con `system_role: 'admin'` |
 | `buildDriverUser(category?, overrides?)` | Usuario con `system_role: 'driver'` |
-| `buildVehicle(overrides?)` | Vehículo con placa aleatoria formato `ABC-123` |
+| `buildVehicle(overrides?)` | Vehículo con placa aleatoria formato `ABC-1234` |
 | `buildVehicleOfType(type, overrides?)` | Vehículo de tipo específico |
-| `buildReservation(spaceId, vehicleId, overrides?)` | Payload de reserva |
 
 ---
 
@@ -377,20 +364,14 @@ import { expect } from '@playwright/test';
 import { test } from '../../src/fixtures';
 
 test.describe('Feature — Nombre descriptivo', () => {
-  test.beforeEach(async ({ adminDashboard }) => {
-    await adminDashboard.goto();
+  test.beforeEach(async ({ loginPage, adminUsersPage }) => {
+    await loginPage.loginAsAdmin();
+    await adminUsersPage.goto();
   });
 
-  test('descripción del comportamiento esperado', async ({ adminUsers, apiClient }) => {
-    // Arrange: crear datos via API para no depender de estado previo
-    const userData = buildDriverUser();
-    await apiClient.withToken(process.env.ADMIN_TOKEN!).createUser(userData);
-
-    // Act
-    await adminUsers.goto();
-
+  test('descripción del comportamiento esperado', async ({ adminUsersPage }) => {
     // Assert
-    expect(await adminUsers.isLoaded()).toBe(true);
+    expect(await adminUsersPage.isLoaded()).toBe(true);
   });
 });
 ```
@@ -400,4 +381,4 @@ test.describe('Feature — Nombre descriptivo', () => {
 - Archivos: `kebab-case.spec.ts`
 - `test.describe`: `'Página / Módulo — contexto'`
 - `test`: descripción en tercera persona del comportamiento esperado
-- Preferir setup vía API (`apiClient`) sobre setup vía UI para mayor velocidad y confiabilidad
+- Usar `waitForResponse` para capturar IDs de recursos creados durante la pre-condición UI

@@ -3,40 +3,46 @@ import { test } from '../../src/fixtures';
 import { buildVehicleOfType } from '../../test-data';
 
 test.describe('Disponibilidad — Reservar espacio', () => {
+  let vehicleId: number;
+  let plate: string;
+
+  test.beforeEach(async ({ loginPage, driverVehiclesPage }) => {
+    ({ plate } = buildVehicleOfType('auto'));
+    await loginPage.loginAsDriver();
+    await driverVehiclesPage.goto();
+
+    const vehicleResponsePromise = driverVehiclesPage.pageInstance.waitForResponse(
+      (r) =>
+        r.url().includes('/me/vehicles') &&
+        r.request().method() === 'POST' &&
+        r.ok(),
+    );
+    await driverVehiclesPage.registerVehicle(plate, 'auto');
+    ({ id: vehicleId } = await (await vehicleResponsePromise).json());
+  });
+
+  test.beforeEach(async ({ loginPage, adminVehiclesPage }) => {
+    await loginPage.loginAsAdmin();
+    await adminVehiclesPage.goto();
+    await adminVehiclesPage.approveVehicle(vehicleId);
+    await expect(adminVehiclesPage.pendingRow(vehicleId)).toBeHidden();
+  });
+
   test('Confirma una reserva de auto y aparece en Mis Reservas como Reservada con las opciones correctas', async ({
     availabilityPage,
     reservePage,
-    driverReservations,
-    apiClient,
+    driverReservationsPage,
   }) => {
-    // ── Pre-condición: crear y aprobar un vehículo tipo auto vía API ──────────
-    // La reserva requiere al menos un vehículo aprobado; se usa API para no
-    // depender de datos de seed ni de un flujo de aprobación manual.
-    const { token: conductorToken } = await apiClient.login(
-      process.env.CONDUCTOR_EMAIL!,
-      process.env.CONDUCTOR_PASSWORD!,
-    );
-    const { token: adminToken } = await apiClient.login(
-      process.env.ADMIN_EMAIL!,
-      process.env.ADMIN_PASSWORD!,
-    );
-
-    const { plate } = buildVehicleOfType('auto');
-
-    const vehicle = await apiClient.withToken(conductorToken).createVehicle(plate, 'auto');
-    await apiClient.withToken(adminToken).approveVehicle(vehicle.id);
-
-    // Seleccionar un espacio disponible desde Disponibilidad
+    // ── Seleccionar un espacio disponible desde Disponibilidad ────────────────
     await availabilityPage.goto();
     await availabilityPage.filterByVehicleType('auto');
     await availabilityPage.clickFirstAvailableSpace();
 
-    // Completar el formulario de reserva
+    // ── Completar el formulario de reserva ────────────────────────────────────
     const today = new Date().toISOString().split('T')[0];
     await reservePage.setDate(today);
-    await reservePage.selectVehicleById(vehicle.id);
+    await reservePage.selectVehicleById(vehicleId);
 
-    // Registrar el listener antes del click para capturar el ID de la reserva.
     const reservationResponsePromise = reservePage.pageInstance.waitForResponse(
       (r) =>
         r.request().method() === 'POST' &&
@@ -46,23 +52,22 @@ test.describe('Disponibilidad — Reservar espacio', () => {
     );
 
     await reservePage.confirmReservation();
-    const response = await reservationResponsePromise;
-    const { id: reservationId } = await response.json();
+    const { id: reservationId } = await (await reservationResponsePromise).json();
 
     await reservePage.waitForRedirectToReservations();
 
-    // Assert: Mis Reservas muestra la reserva con los datos correctos 
-    await expect(driverReservations.pageInstance).toHaveURL(/\/reservations/);
+    // ── Assert: Mis Reservas muestra la reserva con los datos correctos ───────
+    await expect(driverReservationsPage.pageInstance).toHaveURL(/\/reservations/);
 
-    await expect(driverReservations.reservationCard(reservationId)).toBeVisible();
-    await expect(driverReservations.reservationStatus(reservationId)).toHaveText('Reservada');
+    await expect(driverReservationsPage.reservationCard(reservationId)).toBeVisible();
+    await expect(driverReservationsPage.reservationStatus(reservationId)).toHaveText('Reservada');
 
     // Opciones disponibles en estado "Reservada"
-    await expect(driverReservations.confirmButton(reservationId)).toBeVisible();  // Confirmar llegada
-    await expect(driverReservations.cancelButton(reservationId)).toBeVisible();   // Cancelar
-    await expect(driverReservations.detailLink(reservationId)).toBeVisible();     // Ver detalle
+    await expect(driverReservationsPage.confirmButton(reservationId)).toBeVisible();
+    await expect(driverReservationsPage.cancelButton(reservationId)).toBeVisible();
+    await expect(driverReservationsPage.detailLink(reservationId)).toBeVisible();
 
     // "Liberar espacio" solo aparece tras confirmar llegada (estado Confirmada)
-    await expect(driverReservations.releaseButton(reservationId)).toBeHidden();
+    await expect(driverReservationsPage.releaseButton(reservationId)).toBeHidden();
   });
 });
