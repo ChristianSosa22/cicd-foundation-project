@@ -85,34 +85,3 @@ variable "ssl_policy" {
   default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
 
-# ── TLS / HTTPS ───────────────────────────────────────────────────────────────
-
-variable "enable_tls" {
-  description = "When true, provisions an ACM certificate with DNS validation via Route 53, an HTTPS:443 listener with the certificate, and redirects HTTP:80 to HTTPS. When false, keeps the current HTTP-only behavior for backward compatibility."
-  type        = bool
-  default     = false
-}
-
-variable "domain_name" {
-  description = "The primary domain name for the ACM certificate and Route 53 alias record (e.g., app.grupo5.oyd.solid.com.gt). Must be a subdomain of hosted_zone_name."
-  type        = string
-  default     = ""
-}
-
-variable "hosted_zone_name" {
-  description = "Route 53 hosted zone domain name (without trailing dot) for DNS validation and the alias record (e.g., grupo5.oyd.solid.com.gt). A data source looks up this zone by name."
-  type        = string
-  default     = ""
-}
-
-variable "app_fqdn" {
-  description = "Fully-qualified domain name for the application alias record in Route 53 pointing to the ALB. Typically the same as domain_name."
-  type        = string
-  default     = ""
-}
-
-variable "ssl_policy" {
-  description = "SSL/TLS policy for the HTTPS listener. AWS default is ELBSecurityPolicy-2016-08; TLS 1.3 policies are recommended."
-  type        = string
-  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
-}
