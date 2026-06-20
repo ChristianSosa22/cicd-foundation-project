@@ -58,6 +58,11 @@ scheduler_target_message = "{\"event_type\":\"ReleaseExpiredReservationCommand\"
 # ── IAM module ─────────────────────────────────────────────────────────────────
 github_repo = "ChristianSosa22/cicd-foundation-project"
 
+# ── Observability ─────────────────────────────────────────────────────────────
+alert_email                      = "christiansosa2204@gmail.com"
+monthly_budget_limit             = "30"
+observability_log_retention_days = 30
+
 # ── TLS / HTTPS (Deliverable D) ───────────────────────────────────────────────
 enable_tls       = true
 domain_name      = "app.grupo5.oyd.solid.com.gt"

@@ -17,3 +17,8 @@ output "dlq_arn" {
   description = "ARN of the dead-letter queue. Use this in IAM policies or CloudWatch alarms for DLQ monitoring."
   value       = aws_sqs_queue.dlq.arn
 }
+
+output "dlq_name" {
+  description = "Name of the dead-letter queue. Use this as the QueueName dimension in CloudWatch SQS metric alarms."
+  value       = aws_sqs_queue.dlq.name
+}
