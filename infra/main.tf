@@ -14,6 +14,7 @@ module "network" {
   private_app_subnet_cidrs  = var.private_app_subnet_cidrs
   private_data_subnet_cidrs = var.private_data_subnet_cidrs
   single_nat_gateway        = var.single_nat_gateway
+  enable_nat_gateway        = var.enable_nat_gateway
 }
 
 module "security" {
@@ -125,7 +126,8 @@ module "compute" {
   environment                   = var.environment
   name                          = var.project_name
   region                        = var.region
-  private_subnet_ids            = module.network.private_app_subnet_ids
+  subnet_ids                    = module.network.public_subnet_ids
+  assign_public_ip              = true
   api_security_group_id         = module.security.app_security_group_id
   web_service_security_group_id = module.security.web_service_security_group_id
 

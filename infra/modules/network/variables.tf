@@ -40,6 +40,12 @@ variable "single_nat_gateway" {
   default     = true
 }
 
+variable "enable_nat_gateway" {
+  description = "When false, no NAT Gateways or EIPs are created and private subnets have no internet route. Set false when ECS tasks run in public subnets to eliminate NAT costs entirely."
+  type        = bool
+  default     = false
+}
+
 # ── NACL / port variables ───────────────────────────────────────────────────┐
 
 variable "http_port" {

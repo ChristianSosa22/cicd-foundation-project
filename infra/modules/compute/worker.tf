@@ -134,9 +134,9 @@ resource "aws_ecs_service" "worker" {
   launch_type     = "FARGATE"
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets          = var.subnet_ids
     security_groups  = [var.worker_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = var.assign_public_ip
   }
 
   # Ignore task_definition so CI can deploy new images without Terraform rollback;

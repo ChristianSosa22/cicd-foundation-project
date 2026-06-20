@@ -14,6 +14,7 @@ public_subnet_cidrs       = ["10.0.0.0/24", "10.0.1.0/24"]
 private_app_subnet_cidrs  = ["10.0.11.0/24", "10.0.12.0/24"] # ECS Fargate tasks
 private_data_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24"] # RDS (isolated, no NAT)
 single_nat_gateway        = true                             # single NAT for dev cost savings; set false for prod HA
+enable_nat_gateway        = false                            # no NAT — ECS tasks run in public subnets to eliminate ~$57/month NAT cost
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db_name              = "parking"

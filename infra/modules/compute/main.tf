@@ -172,9 +172,9 @@ resource "aws_ecs_service" "api" {
   health_check_grace_period_seconds = 90
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets          = var.subnet_ids
     security_groups  = [var.api_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = var.assign_public_ip
   }
 
   # Register task IPs in the API target group; ALB routes /api, /availability,
@@ -208,9 +208,9 @@ resource "aws_ecs_service" "web" {
   health_check_grace_period_seconds = 90
 
   network_configuration {
-    subnets          = var.private_subnet_ids
+    subnets          = var.subnet_ids
     security_groups  = [var.web_service_security_group_id]
-    assign_public_ip = false
+    assign_public_ip = var.assign_public_ip
   }
 
   # Register task IPs in the web target group; ALB default action (all paths
