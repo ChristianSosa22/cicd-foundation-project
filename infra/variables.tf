@@ -51,6 +51,12 @@ variable "single_nat_gateway" {
   default     = true
 }
 
+variable "enable_nat_gateway" {
+  description = "When false, no NAT Gateways are provisioned. ECS tasks must run in public subnets (assign_public_ip=true in compute module) to reach AWS APIs. Set false for dev to eliminate ~$32+/month NAT fixed cost."
+  type        = bool
+  default     = false
+}
+
 # ── Database module ───────────────────────────────────────────────────────────
 
 variable "db_name" {

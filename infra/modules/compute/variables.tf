@@ -14,9 +14,15 @@ variable "region" {
   default     = "us-east-1"
 }
 
-variable "private_subnet_ids" {
-  description = "List of private subnet IDs where Fargate tasks are placed. Tasks have no public IP; egress routes through the NAT Gateway."
+variable "subnet_ids" {
+  description = "List of subnet IDs where Fargate tasks are placed. Use public subnets with assign_public_ip=true to avoid NAT Gateway costs."
   type        = list(string)
+}
+
+variable "assign_public_ip" {
+  description = "Assign a public IP to each Fargate task. Required when tasks run in public subnets so they can reach AWS APIs (ECR, Secrets Manager, SQS) via the Internet Gateway instead of a NAT Gateway."
+  type        = bool
+  default     = true
 }
 
 # ── API service (Node/Express backend, port 8080) ──────────────────────────────

@@ -104,6 +104,19 @@ resource "aws_network_acl_rule" "public_out_web" {
   to_port        = var.web_port
 }
 
+# Outbound: DB port to private data subnets (ECS tasks in public subnets -> RDS)
+# Required when enable_nat_gateway=false and tasks run in public subnets.
+resource "aws_network_acl_rule" "public_out_db" {
+  network_acl_id = aws_network_acl.public.id
+  rule_number    = 150
+  egress         = true
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = var.vpc_cidr
+  from_port      = var.db_port
+  to_port        = var.db_port
+}
+
 # Public NACL associations
 resource "aws_network_acl_association" "public" {
   count          = var.az_count

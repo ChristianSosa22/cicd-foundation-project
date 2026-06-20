@@ -81,10 +81,10 @@ resource "aws_internet_gateway" "this" {
 }
 
 # ── NAT Gateways ───────────────────────────────────────────────────────────────
-# Elastic IPs for the NAT Gateways.
-# Count is 1 when single_nat_gateway=true, or az_count when per-AZ.
+# Only created when enable_nat_gateway=true. Set false when ECS tasks run in
+# public subnets (assign_public_ip=true) to eliminate the ~$32+/month NAT cost.
 resource "aws_eip" "nat" {
-  count  = local.nat_count
+  count  = var.enable_nat_gateway ? local.nat_count : 0
   domain = "vpc"
 
   tags = merge(local.common_tags, {
@@ -94,9 +94,8 @@ resource "aws_eip" "nat" {
   depends_on = [aws_internet_gateway.this]
 }
 
-# NAT Gateways — placed in public subnets so they can reach the Internet Gateway.
 resource "aws_nat_gateway" "this" {
-  count         = local.nat_count
+  count         = var.enable_nat_gateway ? local.nat_count : 0
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = aws_subnet.public[count.index].id
 
@@ -142,9 +141,10 @@ resource "aws_route_table" "private" {
   })
 }
 
-# Default route: private-subnet traffic exits through the NAT Gateway
+# Default route: private-subnet traffic exits through the NAT Gateway.
+# Only created when enable_nat_gateway=true.
 resource "aws_route" "private_nat" {
-  count                  = local.nat_count
+  count                  = var.enable_nat_gateway ? local.nat_count : 0
   route_table_id         = aws_route_table.private[count.index].id
   destination_cidr_block = "0.0.0.0/0"
   nat_gateway_id         = aws_nat_gateway.this[count.index].id
