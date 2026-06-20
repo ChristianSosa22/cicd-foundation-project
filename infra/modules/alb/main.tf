@@ -66,16 +66,37 @@ resource "aws_lb_target_group" "web" {
   }
 }
 
-# ── Listener (port 80) ────────────────────────────────────────────────────────
-# Default action -> web. API paths are matched by a higher-priority rule below.
+# ── HTTP Listener (port 80) ───────────────────────────────────────────────────
+# When enable_tls is false: default action -> web. API paths are matched by a
+# higher-priority rule. When enable_tls is true: default action -> 301 redirect
+# to HTTPS (all traffic forced to 443).
 resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.this.arn
   port              = 80
   protocol          = "HTTP"
 
   default_action {
-    type             = "forward"
-    target_group_arn = aws_lb_target_group.web.arn
+    type = var.enable_tls ? "redirect" : "forward"
+
+    # Redirect to HTTPS when TLS is enabled
+    dynamic "redirect" {
+      for_each = var.enable_tls ? [1] : []
+      content {
+        port        = "443"
+        protocol    = "HTTPS"
+        status_code = "HTTP_301"
+      }
+    }
+
+    # Forward to web target group when TLS is disabled
+    dynamic "forward" {
+      for_each = var.enable_tls ? [] : [1]
+      content {
+        target_group {
+          arn = aws_lb_target_group.web.arn
+        }
+      }
+    }
   }
 
   tags = {
@@ -85,7 +106,7 @@ resource "aws_lb_listener" "http" {
   }
 }
 
-# API routing rule: send backend paths to the API target group.
+# API routing rule: send backend paths to the API target group (HTTP listener).
 resource "aws_lb_listener_rule" "api" {
   listener_arn = aws_lb_listener.http.arn
   priority     = 100
@@ -105,5 +126,127 @@ resource "aws_lb_listener_rule" "api" {
     Environment = var.environment
     Project     = var.name
     ManagedBy   = "terraform"
+  }
+}
+
+# ── TLS: ACM Certificate ─────────────────────────────────────────────────────
+resource "aws_acm_certificate" "this" {
+  count = var.enable_tls ? 1 : 0
+
+  domain_name = var.domain_name
+  subject_alternative_names = [
+    "*.${var.hosted_zone_name}"
+  ]
+  validation_method = "DNS"
+
+  lifecycle {
+    create_before_destroy = true
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.name
+    ManagedBy   = "terraform"
+    Purpose     = "tls"
+  }
+}
+
+# ── TLS: Route 53 Hosted Zone Lookup ──────────────────────────────────────────
+data "aws_route53_zone" "this" {
+  count = var.enable_tls ? 1 : 0
+
+  name         = "${var.hosted_zone_name}."
+  private_zone = false
+}
+
+# ── TLS: DNS Validation Records ──────────────────────────────────────────────
+resource "aws_route53_record" "cert_validation" {
+  for_each = var.enable_tls ? {
+    for dvo in aws_acm_certificate.this[0].domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      type   = dvo.resource_record_type
+      record = dvo.resource_record_value
+    }
+  } : {}
+
+  allow_overwrite = true
+  name            = each.value.name
+  type            = each.value.type
+  records         = [each.value.record]
+  ttl             = 60
+  zone_id         = data.aws_route53_zone.this[0].zone_id
+}
+
+# ── TLS: Certificate Validation Wait ──────────────────────────────────────────
+resource "aws_acm_certificate_validation" "this" {
+  count = var.enable_tls ? 1 : 0
+
+  certificate_arn         = aws_acm_certificate.this[0].arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+
+  timeouts {
+    create = "10m"
+  }
+}
+
+# ── TLS: HTTPS Listener (port 443) ───────────────────────────────────────────
+resource "aws_lb_listener" "https" {
+  count = var.enable_tls ? 1 : 0
+
+  load_balancer_arn = aws_lb.this.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = var.ssl_policy
+  certificate_arn   = aws_acm_certificate_validation.this[0].certificate_arn
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.web.arn
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.name
+    ManagedBy   = "terraform"
+  }
+}
+
+# ── TLS: API Routing Rule on HTTPS ────────────────────────────────────────────
+resource "aws_lb_listener_rule" "https_api" {
+  count = var.enable_tls ? 1 : 0
+
+  listener_arn = aws_lb_listener.https[0].arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.api.arn
+  }
+
+  condition {
+    path_pattern {
+      values = var.api_path_patterns
+    }
+  }
+
+  tags = {
+    Environment = var.environment
+    Project     = var.name
+    ManagedBy   = "terraform"
+  }
+}
+
+# ── TLS: Route 53 Alias Record → ALB ─────────────────────────────────────────
+resource "aws_route53_record" "app" {
+  count = var.enable_tls ? 1 : 0
+
+  zone_id = data.aws_route53_zone.this[0].zone_id
+  name    = var.app_fqdn
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.this.dns_name
+    zone_id                = aws_lb.this.zone_id
+    evaluate_target_health = true
   }
 }

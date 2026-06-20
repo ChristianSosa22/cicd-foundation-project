@@ -270,3 +270,166 @@ scheduler_schedule_name = "oyd-project-dev-release-expired"
 ```
 
 El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).
+
+### IAM Module — Centralized Least-Privilege Roles (Deliverable A)
+
+
+A continuación se detalla el plan de ejecución enfocado exclusivamente en el módulo centralizado de IAM (`infra/modules/iam/`). Se verifica el aprovisionamiento de los 7 roles canónicos sin el uso de acciones o recursos comodín (`*`).
+
+| Rol Canónico | Componente / Servicio | Principio de Mínimo Privilegio Aplicado |
+| :--- | :--- | :--- |
+| `compute_exec_role` | ECS Fargate Agent | Descarga de ECR, creación de logs y lectura selectiva de secretos. |
+| `compute_task_role` | App (Next.js / Express) | Interacción directa con S3, SQS y conexiones RDS. |
+| `async_consumer_receipt_role` | Lambda Recibos | Consumo de SQS y escritura en Bucket S3 de recibos. |
+| `async_consumer_release_role` | Lambda Liberación | Consumo de SQS y lectura en Secrets Manager. |
+| `async_consumer_email_role` | Lambda Correos | Consumo de SQS de notificaciones. |
+| `scheduler_role` | EventBridge Scheduler | Permiso único de SQS:SendMessage hacia la cola destino. |
+| `ci_runner_role` | GitHub Actions (OIDC) | Permisos de despliegue acotados por la rama principal (main). |
+
+<details>
+<summary><b>Haz clic aquí para expandir el extracto del terraform plan (IAM)</b></summary>
+
+```text
+  # module.iam.aws_iam_role.compute_task will be created
+  + resource "aws_iam_role" "compute_task" {
+      + arn                   = (known after apply)
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "ecs-tasks.amazonaws.com"
+                        }
+                    },
+                ]
+              + Version   = "2012-10-17"
+            }
+        )
+      + name                  = "oyd-project-dev-iam-compute-task"
+    }
+
+  # module.iam.aws_iam_role_policy.compute_task_s3 will be created
+  + resource "aws_iam_role_policy" "compute_task_s3" {
+      + name   = "oyd-project-dev-iam-compute-task-s3"
+      + policy = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = [
+                          + "s3:GetObject",
+                          + "s3:PutObject",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:s3:::oyd-project-receipts-dev/*"
+                    },
+                ]
+            }
+        )
+    }
+
+  # module.iam.aws_iam_role.scheduler will be created
+  + resource "aws_iam_role" "scheduler" {
+      + name                  = "oyd-project-dev-iam-scheduler"
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRole"
+                      + Effect    = "Allow"
+                      + Principal = {
+                          + Service = "scheduler.amazonaws.com"
+                        }
+                    },
+                ]
+            }
+        )
+    }
+
+  # module.iam.aws_iam_role_policy.scheduler_sqs will be created
+  + resource "aws_iam_role_policy" "scheduler_sqs" {
+      + name   = "oyd-project-dev-iam-scheduler-sqs"
+      + policy = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action   = [
+                          + "sqs:SendMessage",
+                        ]
+                      + Effect   = "Allow"
+                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-release-queue"
+                    },
+                ]
+            }
+        )
+    }
+
+  # module.iam.aws_iam_role.ci_runner will be created
+  + resource "aws_iam_role" "ci_runner" {
+      + name                  = "oyd-project-dev-iam-ci-runner"
+      + assume_role_policy    = jsonencode(
+            {
+              + Statement = [
+                  + {
+                      + Action    = "sts:AssumeRoleWithWebIdentity"
+                      + Condition = {
+                          + StringLike = {
+                              + "token.actions.githubusercontent.com:sub" = "repo:ChristianSosa22/cicd-foundation-project:ref:refs/heads/main"
+                            }
+                        }
+                      + Principal = {
+                          + Federated = "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
+                        }
+                    },
+                ]
+            }
+        )
+    }
+
+Plan: 20 to add, 0 to change, 0 to destroy.
+```
+
+El plan completo con los 7 roles y sus políticas se encuentra en [`evidence/iam-plan.txt`](evidence/iam-plan.txt).
+
+</details>
+
+
+### TLS Termination — HTTPS on All Endpoints (Deliverable D)
+
+Certificado ACM wildcard `*.grupo5.oyd.solid.com.gt` con validación DNS automática vía Route 53. Listener HTTPS:443 con policy TLS 1.3. HTTP:80 → HTTPS 301 redirect.
+
+```
+acm_certificate_arn  = "arn:aws:acm:us-east-1:733202870569:certificate/3b4bf94b-250c-4f11-89f8-ad97e2eb3434"
+acm_status           = "ISSUED"
+alb_https_url        = "https://app.grupo5.oyd.solid.com.gt"
+app_fqdn             = "app.grupo5.oyd.solid.com.gt"
+```
+
+#### Evidencia de TLS
+
+El siguiente extracto muestra los dos curl ejecutados contra `app.grupo5.oyd.solid.com.gt`:
+
+```text
+# 1. HTTPS — TLS handshake exitoso + HTTP 200
+$ curl -v https://app.grupo5.oyd.solid.com.gt/health
+* Connected to app.grupo5.oyd.solid.com.gt (54.162.69.107) port 443
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 200 OK
+< Strict-Transport-Security: max-age=31536000; includeSubDomains
+{"status":"ok"}
+
+# 2. HTTP → HTTPS 301 redirect
+$ curl -v http://app.grupo5.oyd.solid.com.gt
+< HTTP/1.1 301 Moved Permanently
+< Location: https://app.grupo5.oyd.solid.com.gt:443/
+
+# 3. ACM Certificate Status + Subject
+$ aws acm describe-certificate --certificate-arn arn:aws:acm:us-east-1:733202870569:certificate/3b4bf94b-250c-4f11-89f8-ad97e2eb3434 --query "Certificate.[Status,Subject]"
+[
+    "ISSUED",
+    "CN=app.grupo5.oyd.solid.com.gt"
+]
+```
+
+La evidencia completa se encuentra en [`evidence/tls-curl.txt`](evidence/tls-curl.txt).

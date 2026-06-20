@@ -54,3 +54,18 @@ email_message_retention_seconds    = 345600  # 4 days
 schedule_expression      = "rate(20 minutes)"
 scheduler_timezone       = "America/Guatemala"
 scheduler_target_message = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"
+
+# ── IAM module ─────────────────────────────────────────────────────────────────
+github_repo = "ChristianSosa22/cicd-foundation-project"
+
+# ── Observability ─────────────────────────────────────────────────────────────
+alert_email                      = "christiansosa2204@gmail.com"
+monthly_budget_limit             = "30"
+observability_log_retention_days = 30
+
+# ── TLS / HTTPS (Deliverable D) ───────────────────────────────────────────────
+enable_tls       = true
+domain_name      = "app.grupo5.oyd.solid.com.gt"
+hosted_zone_name = "grupo5.oyd.solid.com.gt"
+app_fqdn         = "app.grupo5.oyd.solid.com.gt"
+ssl_policy       = "ELBSecurityPolicy-TLS13-1-2-2021-06"

@@ -154,6 +154,16 @@ variable "sqs_queue_arn" {
   type        = string
 }
 
+variable "compute_exec_role_arn" {
+  description = "ARN of the ECS task execution role from the IAM module. Used by all ECS task definitions to pull images, write logs, and read SSM/Secrets Manager parameters."
+  type        = string
+}
+
+variable "compute_task_role_arn" {
+  description = "ARN of the API task role from the IAM module. Grants the running API container access to S3, SQS, RDS, and KMS."
+  type        = string
+}
+
 variable "polling_batch_size" {
   description = "Maximum number of messages the worker requests per SQS ReceiveMessage call (1-10). Injected as POLLING_BATCH_SIZE. Higher values improve throughput; lower values reduce per-message latency."
   type        = number

@@ -27,3 +27,8 @@ variable "target_message" {
   description = "JSON message body sent to the target SQS queue on each scheduled invocation. Must conform to the ReleaseExpiredReservationCommand payload contract defined in the project documentation."
   type        = string
 }
+
+variable "scheduler_role_arn" {
+  description = "ARN of the IAM role for EventBridge Scheduler from the IAM module. Grants sqs:SendMessage on the target queue."
+  type        = string
+}

@@ -1,0 +1,71 @@
+# TLS Evidence — Deliverable D
+# Domain: app.grupo5.oyd.solid.com.gt
+# Certificate: *.grupo5.oyd.solid.com.gt (ACM, ISSUED)
+# Date: 2026-06-20
+
+# ── 1. HTTPS — TLS handshake + HTTP 200 ──────────────────────────────────────
+$ curl -v https://app.grupo5.oyd.solid.com.gt/health
+* Host app.grupo5.oyd.solid.com.gt:443 was resolved.
+* IPv6: (none)
+* IPv4: 54.162.69.107, 52.55.50.142
+*   Trying 54.162.69.107:443...
+* schannel: disabled automatic use of client certificate
+* Connected to app.grupo5.oyd.solid.com.gt (54.162.69.107) port 443
+* using HTTP/1.x
+> GET /health HTTP/1.1
+> Host: app.grupo5.oyd.solid.com.gt
+> User-Agent: curl/8.11.0
+> Accept: */*
+>
+* Request completely sent off
+* schannel: remote party requests renegotiation
+* schannel: renegotiating SSL/TLS connection
+* schannel: SSL/TLS connection renegotiated
+< HTTP/1.1 200 OK
+< Date: Sat, 20 Jun 2026 17:31:30 GMT
+< Content-Type: application/json; charset=utf-8
+< Content-Length: 15
+< Connection: keep-alive
+< Strict-Transport-Security: max-age=31536000; includeSubDomains
+< X-Content-Type-Options: nosniff
+<
+{"status":"ok"}* Connection #0 to host app.grupo5.oyd.solid.com.gt left intact
+
+# ── 2. HTTP → HTTPS 301 redirect ─────────────────────────────────────────────
+$ curl -v http://app.grupo5.oyd.solid.com.gt
+* Host app.grupo5.oyd.solid.com.gt:80 was resolved.
+* IPv6: (none)
+* IPv4: 54.162.69.107, 52.55.50.142
+*   Trying 54.162.69.107:80...
+* Connected to app.grupo5.oyd.solid.com.gt (54.162.69.107) port 80
+* using HTTP/1.x
+> GET / HTTP/1.1
+> Host: app.grupo5.oyd.solid.com.gt
+> User-Agent: curl/8.11.0
+> Accept: */*
+>
+* Request completely sent off
+< HTTP/1.1 301 Moved Permanently
+< Server: awselb/2.0
+< Date: Sat, 20 Jun 2026 17:31:45 GMT
+< Content-Type: text/html
+< Content-Length: 134
+< Connection: keep-alive
+< Location: https://app.grupo5.oyd.solid.com.gt:443/
+<
+<html>
+<head><title>301 Moved Permanently</title></head>
+<body>
+<center><h1>301 Moved Permanently</h1></center>
+</body>
+</html>
+* Connection #0 to host app.grupo5.oyd.solid.com.gt left intact
+
+# ── 3. ACM Certificate Status + Subject ──────────────────────────────────────
+$ aws acm describe-certificate \
+    --certificate-arn arn:aws:acm:us-east-1:733202870569:certificate/3b4bf94b-250c-4f11-89f8-ad97e2eb3434 \
+    --query "Certificate.[Status,Subject]"
+[
+    "ISSUED",
+    "CN=app.grupo5.oyd.solid.com.gt"
+]

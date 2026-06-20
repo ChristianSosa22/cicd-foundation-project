@@ -215,3 +215,74 @@ output "alb_url" {
   description = "Public HTTP URL of the application (http://<alb_dns_name>). Web frontend at /, backend at /api, /availability, /reservar. Use this in curl evidence."
   value       = module.alb.alb_url
 }
+
+# ── IAM Module ────────────────────────────────────────────────────────────────
+
+output "iam_compute_exec_role_arn" {
+  description = "ARN of the ECS task execution role (IAM module)."
+  value       = module.iam.compute_exec_role_arn
+}
+
+output "iam_compute_task_role_arn" {
+  description = "ARN of the API task role (IAM module). Grants S3, SQS, RDS, KMS access."
+  value       = module.iam.compute_task_role_arn
+}
+
+output "iam_async_receipt_role_arn" {
+  description = "ARN of the receipt worker Lambda execution role (IAM module)."
+  value       = module.iam.async_receipt_role_arn
+}
+
+output "iam_async_release_role_arn" {
+  description = "ARN of the release worker Lambda execution role (IAM module)."
+  value       = module.iam.async_release_role_arn
+}
+
+output "iam_async_email_role_arn" {
+  description = "ARN of the email worker Lambda execution role (IAM module)."
+  value       = module.iam.async_email_role_arn
+}
+
+output "iam_scheduler_role_arn" {
+  description = "ARN of the EventBridge Scheduler role (IAM module). Scoped to sqs:SendMessage on release queue."
+  value       = module.iam.scheduler_role_arn
+}
+
+output "iam_ci_runner_role_arn" {
+  description = "ARN of the GitHub Actions CI runner role (IAM module). Assumable via OIDC."
+  value       = module.iam.ci_runner_role_arn
+}
+
+# ── TLS / HTTPS ───────────────────────────────────────────────────────────────
+
+output "acm_certificate_arn" {
+  description = "ARN of the ACM certificate (Deliverable D)."
+  value       = module.alb.acm_certificate_arn
+}
+
+output "alb_https_url" {
+  description = "Public HTTPS URL of the application (https://<app_fqdn>). Use this in curl evidence for TLS verification."
+  value       = module.alb.alb_https_url
+}
+
+output "app_fqdn" {
+  description = "Fully-qualified domain name of the application (Route 53 alias record)."
+  value       = module.alb.app_fqdn
+}
+
+# ── Observability ─────────────────────────────────────────────────────────────
+
+output "observability_sns_topic_arn" {
+  description = "ARN of the SNS alerts topic. Subscribe additional endpoints (Slack, PagerDuty) here for multi-channel notifications."
+  value       = module.observability.sns_topic_arn
+}
+
+output "observability_dashboard_name" {
+  description = "Name of the CloudWatch dashboard. Open it at https://console.aws.amazon.com/cloudwatch/home#dashboards:name=<value>."
+  value       = module.observability.dashboard_name
+}
+
+output "observability_budget_name" {
+  description = "Name of the AWS Budget. Verify it at https://console.aws.amazon.com/billing/home#/budgets."
+  value       = module.observability.budget_name
+}

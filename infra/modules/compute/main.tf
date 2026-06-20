@@ -37,103 +37,6 @@ resource "aws_cloudwatch_log_group" "web" {
   }
 }
 
-# ── IAM: Task Execution Role ───────────────────────────────────────────────────
-# Assumed by the Fargate agent (not the app code). Allows pulling images from ECR,
-# writing logs to CloudWatch, and reading SSM SecureString parameters for 'secrets'.
-resource "aws_iam_role" "ecs_task_exec" {
-  name = "${var.name}-${var.environment}-ecs-exec-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-
-  tags = {
-    Environment = var.environment
-    Project     = var.name
-    ManagedBy   = "terraform"
-  }
-}
-
-# AWS managed policy: ECR image pull + CloudWatch Logs write access
-resource "aws_iam_role_policy_attachment" "ecs_exec_managed" {
-  role       = aws_iam_role.ecs_task_exec.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-}
-
-# Inline policy: read SSM SecureString parameters (secrets block in task definitions)
-resource "aws_iam_role_policy" "ecs_exec_ssm" {
-  name = "${var.name}-${var.environment}-ecs-exec-ssm"
-  role = aws_iam_role.ecs_task_exec.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["ssm:GetParameters", "ssm:GetParameter"]
-      Resource = values(var.secret_arns)
-    }]
-  })
-}
-
-# ── IAM: API Task Role ────────────────────────────────────────────────────────
-# Assumed BY the running API container (not by Fargate infra). Scoped to the
-# minimum permissions the app code requires at runtime.
-resource "aws_iam_role" "api_task" {
-  name = "${var.name}-${var.environment}-api-task-role"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect    = "Allow"
-      Principal = { Service = "ecs-tasks.amazonaws.com" }
-      Action    = "sts:AssumeRole"
-    }]
-  })
-
-  tags = {
-    Environment = var.environment
-    Project     = var.name
-    ManagedBy   = "terraform"
-  }
-}
-
-# Grants the API container access to the receipts S3 bucket for PDF/QR storage
-resource "aws_iam_role_policy" "api_s3_receipts" {
-  name = "${var.name}-${var.environment}-api-s3-receipts"
-  role = aws_iam_role.api_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject"]
-      Resource = "${var.receipts_bucket_arn}/*"
-    }]
-  })
-}
-
-# Grants the API container the ability to enqueue receipt-generation messages.
-# The POST /reservas/enqueue endpoint (async producer) calls sqs:SendMessage on
-# the receipt queue. Scoped to the specific queue ARN — no wildcard.
-resource "aws_iam_role_policy" "api_sqs_send" {
-  name = "${var.name}-${var.environment}-api-sqs-send"
-  role = aws_iam_role.api_task.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect   = "Allow"
-      Action   = ["sqs:SendMessage"]
-      Resource = var.sqs_queue_arn
-    }]
-  })
-}
-
 # ── Task Definitions ──────────────────────────────────────────────────────────
 
 # API: Node/Express backend. Health check uses /ready (DB-aware) per health.routes.ts.
@@ -143,8 +46,8 @@ resource "aws_ecs_task_definition" "api" {
   network_mode             = "awsvpc"
   cpu                      = var.api_cpu
   memory                   = var.api_memory
-  execution_role_arn       = aws_iam_role.ecs_task_exec.arn
-  task_role_arn            = aws_iam_role.api_task.arn
+  execution_role_arn       = var.compute_exec_role_arn
+  task_role_arn            = var.compute_task_role_arn
 
   container_definitions = jsonencode([{
     name      = "api"
@@ -212,7 +115,7 @@ resource "aws_ecs_task_definition" "web" {
   network_mode             = "awsvpc"
   cpu                      = var.web_cpu
   memory                   = var.web_memory
-  execution_role_arn       = aws_iam_role.ecs_task_exec.arn
+  execution_role_arn       = var.compute_exec_role_arn
 
   container_definitions = jsonencode([{
     name      = "web"
@@ -226,7 +129,8 @@ resource "aws_ecs_task_definition" "web" {
 
     environment = [
       { name = "NODE_ENV", value = "production" },
-      { name = "PORT", value = "3000" }
+      { name = "PORT", value = "3000" },
+      { name = "HOSTNAME", value = "0.0.0.0" }
     ]
 
     # Root path (/) returns 307 → /login, which is < 500, so the check passes
@@ -257,11 +161,12 @@ resource "aws_ecs_task_definition" "web" {
 
 # ── ECS Services ──────────────────────────────────────────────────────────────
 resource "aws_ecs_service" "api" {
-  name            = "${var.name}-${var.environment}-api-svc"
-  cluster         = aws_ecs_cluster.this.id
-  task_definition = aws_ecs_task_definition.api.arn
-  desired_count   = var.api_desired_count
-  launch_type     = "FARGATE"
+  name                   = "${var.name}-${var.environment}-api-svc"
+  cluster                = aws_ecs_cluster.this.id
+  task_definition        = aws_ecs_task_definition.api.arn
+  desired_count          = var.api_desired_count
+  launch_type            = "FARGATE"
+  enable_execute_command = true
 
   # Give tasks time to boot and pass the ALB health check before ECS judges them.
   health_check_grace_period_seconds = 90

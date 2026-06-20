@@ -8,7 +8,16 @@ import { encrypt, plateHash } from '../lib/crypto';
 import { parkingSpaces, reservations, settings, spaceAllowedCategory, tariffs, users, vehicles } from '../db/schema';
 
 export const app = buildApp();
-export const request = supertest(app);
+const agent = supertest(app);
+// Business routes are mounted under /api (see app.ts). Tests use logical paths
+// without the prefix so call sites stay readable; this wrapper adds it.
+export const request = {
+  get:    (path: string) => agent.get(`/api${path}`),
+  post:   (path: string) => agent.post(`/api${path}`),
+  put:    (path: string) => agent.put(`/api${path}`),
+  patch:  (path: string) => agent.patch(`/api${path}`),
+  delete: (path: string) => agent.delete(`/api${path}`),
+};
 
 export async function createUser(overrides: {
   email?: string;

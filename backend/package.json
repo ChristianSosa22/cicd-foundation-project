@@ -11,7 +11,7 @@
     "worker": "node dist/worker.js",
     "typecheck": "tsc --noEmit",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "drizzle-kit migrate",
+    "db:migrate": "node dist/db/migrate.js",
     "db:push": "drizzle-kit push",
     "db:apply-sql": "psql \"$DATABASE_URL\" -f sql/schema.sql",
     "db:seed": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 --no-psqlrc -f sql/seed.sql",
