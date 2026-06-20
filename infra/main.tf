@@ -174,6 +174,24 @@ module "jumphost" {
   depends_on = [module.network, module.security]
 }
 
+module "iam" {
+  source = "./modules/iam"
+
+  project_name        = var.project_name
+  environment         = var.environment
+  region              = var.region
+  receipts_bucket_arn = module.storage.bucket_arn
+  rds_instance_arn    = module.database.db_instance_arn
+  db_username         = var.db_username
+  receipt_queue_arn   = module.async_receipt.queue_arn
+  release_queue_arn   = module.async_release.queue_arn
+  email_queue_arn     = module.async_email.queue_arn
+  sns_topic_arn       = ""
+  kms_key_arn         = ""
+  github_repo         = var.github_repo
+  oidc_provider_arn   = ""
+}
+
 module "alb" {
   source = "./modules/alb"
 
@@ -183,6 +201,13 @@ module "alb" {
   public_subnet_ids = module.network.public_subnet_ids
   security_group_id = module.security.web_security_group_id
   health_check_path = var.health_check_path
+
+  # TLS / HTTPS
+  enable_tls       = var.enable_tls
+  domain_name      = var.domain_name
+  hosted_zone_name = var.hosted_zone_name
+  app_fqdn         = var.app_fqdn
+  ssl_policy       = var.ssl_policy
 
   depends_on = [module.network, module.security]
 }

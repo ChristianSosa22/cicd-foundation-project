@@ -251,7 +251,47 @@ variable "worker_desired_count" {
 }
 
 variable "polling_batch_size" {
-  description = "Maximum number of messages the async worker requests per SQS ReceiveMessage call (1-10). Injected into the worker container as POLLING_BATCH_SIZE."
+  description = "Maximum number of messages the async worker requests per SQS ReceiveMessage call (1-10). Injected as POLLING_BATCH_SIZE. Higher values improve throughput; lower values reduce per-message latency."
   type        = number
   default     = 10
+}
+
+# ── IAM module ─────────────────────────────────────────────────────────────────
+
+variable "github_repo" {
+  description = "GitHub repository in org/repo format for the OIDC CI runner role trust policy subject claim. Example: ChristianSosa22/cicd-foundation-project."
+  type        = string
+  default     = "ChristianSosa22/cicd-foundation-project"
+}
+
+# ── TLS / HTTPS ───────────────────────────────────────────────────────────────
+
+variable "enable_tls" {
+  description = "When true, provisions an ACM certificate with DNS validation via Route 53, an HTTPS:443 listener with the certificate, and redirects HTTP:80 to HTTPS. When false, keeps the current HTTP-only behavior."
+  type        = bool
+  default     = false
+}
+
+variable "domain_name" {
+  description = "Primary domain name for the ACM certificate and Route 53 alias record (e.g., app.grupo5.oyd.solid.com.gt). Must be a subdomain of hosted_zone_name."
+  type        = string
+  default     = ""
+}
+
+variable "hosted_zone_name" {
+  description = "Route 53 hosted zone domain name (without trailing dot) for DNS validation and the alias record (e.g., grupo5.oyd.solid.com.gt)."
+  type        = string
+  default     = ""
+}
+
+variable "app_fqdn" {
+  description = "Fully-qualified domain name for the application alias record in Route 53 pointing to the ALB. Typically the same as domain_name."
+  type        = string
+  default     = ""
+}
+
+variable "ssl_policy" {
+  description = "SSL/TLS policy for the HTTPS listener. AWS default is ELBSecurityPolicy-2016-08; TLS 1.3 policies are recommended."
+  type        = string
+  default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
