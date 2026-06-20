@@ -28,14 +28,14 @@ export function buildApp(): Express {
 
   app.use(rateLimit({ windowMs: 60_000, limit: 120, standardHeaders: true, legacyHeaders: false }));
 
-  app.use('/auth', authRouter);
-  app.use('/availability', availabilityRouter);
-  app.use('/tariffs', tariffsRouter);
-  app.use('/me', meRouter);
-  app.use('/reservar', reservarRouter);
-  app.use('/reservas', reservasRouter);
-  app.use('/reservations', reservationsRouter);
-  app.use('/admin', adminRouter);
+  app.use('/api/auth', authRouter);
+  app.use('/api/availability', availabilityRouter);
+  app.use('/api/tariffs', tariffsRouter);
+  app.use('/api/me', meRouter);
+  app.use('/api/reservar', reservarRouter);
+  app.use('/api/reservas', reservasRouter);
+  app.use('/api/reservations', reservationsRouter);
+  app.use('/api/admin', adminRouter);
 
   // Unknown route -> 404, then the central error handler (must be last).
   app.use((req, _res, next) => next(notFound(`Ruta no encontrada: ${req.method} ${req.path}`)));
