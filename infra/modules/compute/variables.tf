@@ -91,8 +91,13 @@ variable "s3_bucket" {
 # ── Secret ARNs from SSM Parameter Store ──────────────────────────────────────
 
 variable "secret_arns" {
-  description = "Map of environment variable name to SSM parameter ARN. Injected into the API task definition as 'secrets' so Fargate pulls them at container start. Required keys: DATABASE_URL, JWT_SECRET, ENCRYPTION_KEY, HMAC_KEY."
+  description = "Map of environment variable name to SSM parameter ARN. Injected into the API task definition as 'secrets' so Fargate pulls them at container start. Required keys: JWT_SECRET, ENCRYPTION_KEY, HMAC_KEY."
   type        = map(string)
+}
+
+variable "db_password_secret_arn" {
+  description = "ARN of the Secrets Manager secret that holds the RDS master password. Injected as a non-sensitive environment variable (DB_PASSWORD_SECRET_ARN) so the API can call GetSecretValue at startup to retrieve the password."
+  type        = string
 }
 
 # ── Security group IDs (created by security module) ───────────────────────────

@@ -47,6 +47,40 @@ output "ecr_web_repository_url" {
   value       = module.ecr.web_repository_url
 }
 
+# ── KMS ───────────────────────────────────────────────────────────────────────
+
+output "kms_key_arn" {
+  description = "ARN of the KMS CMK used to encrypt S3 and RDS. Pass to any module that needs to reference or grant access to this key."
+  value       = module.kms.key_arn
+}
+
+output "kms_key_id" {
+  description = "Key ID of the KMS CMK. Use as kms_master_key_id in S3 SSE configuration or kms_key_id in RDS."
+  value       = module.kms.key_id
+}
+
+output "kms_alias_arn" {
+  description = "ARN of the KMS alias (alias/<name>). Use this in IAM policy Resource fields instead of the raw key ARN when human-readable names are preferred."
+  value       = module.kms.alias_arn
+}
+
+output "kms_alias_name" {
+  description = "Full alias name of the KMS CMK, including the 'alias/' prefix (e.g., alias/oyd-project-dev-cmk)."
+  value       = module.kms.alias_name
+}
+
+# ── Secrets Manager ───────────────────────────────────────────────────────────
+
+output "db_password_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the RDS master password. Pass as DB_PASSWORD_SECRET_ARN to compute resources so they can call GetSecretValue at runtime."
+  value       = module.secrets.db_password_secret_arn
+}
+
+output "db_password_secret_name" {
+  description = "Name of the Secrets Manager secret holding the RDS master password. Use for aws secretsmanager get-secret-value --secret-id <name> in operational runbooks."
+  value       = module.secrets.db_password_secret_name
+}
+
 # ── Secrets (paths only — not values) ─────────────────────────────────────────
 
 output "ssm_parameter_names" {

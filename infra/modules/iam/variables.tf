@@ -51,7 +51,13 @@ variable "sns_topic_arn" {
 }
 
 variable "kms_key_arn" {
-  description = "ARN of the KMS CMK. If set, grants kms:Decrypt and kms:GenerateDataKey to the compute task role. Wired by Estudiante C after Deliverable B."
+  description = "ARN of the KMS CMK. If set, grants kms:Decrypt and kms:GenerateDataKey to the compute task role."
+  type        = string
+  default     = ""
+}
+
+variable "db_password_secret_arn" {
+  description = "ARN of the Secrets Manager secret holding the RDS master password. Grants secretsmanager:GetSecretValue to the compute task role so the app can fetch the password at runtime."
   type        = string
   default     = ""
 }

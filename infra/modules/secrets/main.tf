@@ -26,6 +26,36 @@ locals {
   kms_key     = var.kms_key_id != "" ? var.kms_key_id : null
 }
 
+# ── Secrets Manager — DB password ─────────────────────────────────────────────
+# Stores the RDS master password as a Secrets Manager secret so the value is
+# never hardcoded in Terraform state as plaintext. The secret version is owned
+# by Terraform and its value flows in from the sensitive variable db_password,
+# which must be supplied via TF_VAR_db_password or a CI secret at apply time.
+resource "aws_secretsmanager_secret" "db_password" {
+  name        = "${local.path_prefix}/db_password"
+  description = "RDS master password for ${var.name}-${var.environment}. Managed by Terraform; value sourced from TF_VAR_db_password."
+  kms_key_id  = local.kms_key
+
+  tags = {
+    Environment = var.environment
+    Project     = var.name
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_secretsmanager_secret_version" "db_password" {
+  secret_id     = aws_secretsmanager_secret.db_password.id
+  secret_string = var.db_password != "" ? var.db_password : "PLACEHOLDER_SET_ON_INITIAL_APPLY"
+
+  # After the first apply seeds the real password, subsequent pipeline runs do
+  # not pass TF_VAR_db_password. ignore_changes ensures Terraform never
+  # overwrites the live value — the secret is managed out-of-band from that
+  # point on, just like the SSM parameters above.
+  lifecycle {
+    ignore_changes = [secret_string]
+  }
+}
+
 # Full PostgreSQL connection string consumed by the API as DATABASE_URL.
 # Format: postgres://username:password@host:5432/parking
 resource "aws_ssm_parameter" "database_url" {

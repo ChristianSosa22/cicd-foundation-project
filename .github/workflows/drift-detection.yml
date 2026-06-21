@@ -57,8 +57,6 @@ jobs:
           terraform plan -detailed-exitcode -input=false \
             -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD_DEV }}
 
       - name: Open or update drift issue
         if: steps.plan.outputs.exit_code == '2'
@@ -138,8 +136,6 @@ jobs:
           terraform plan -detailed-exitcode -input=false \
             -var-file=envs/prod/prod.tfvars -no-color 2>&1 | tee plan.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
-        env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD_PROD }}
 
       - name: Open or update drift issue
         if: steps.plan.outputs.exit_code == '2'

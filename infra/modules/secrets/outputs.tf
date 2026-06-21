@@ -17,3 +17,13 @@ output "parameter_names" {
     HMAC_KEY       = aws_ssm_parameter.hmac_key.name
   }
 }
+
+output "db_password_secret_arn" {
+  description = "ARN of the Secrets Manager secret that stores the RDS master password."
+  value       = aws_secretsmanager_secret.db_password.arn
+}
+
+output "db_password_secret_name" {
+  description = "Name of the Secrets Manager secret that stores the RDS master password."
+  value       = aws_secretsmanager_secret.db_password.name
+}

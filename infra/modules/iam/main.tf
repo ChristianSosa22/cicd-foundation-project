@@ -127,11 +127,25 @@ resource "aws_iam_role_policy" "compute_task_rds" {
   })
 }
 
-# KMS decrypt + generate data key (conditional on kms_key_arn being non-empty)
+# Secrets Manager: GetSecretValue for the db_password secret (runtime SDK call from app)
+resource "aws_iam_role_policy" "compute_task_secretsmanager" {
+  name = "${local.prefix}-iam-compute-task-secretsmanager"
+  role = aws_iam_role.compute_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["secretsmanager:GetSecretValue"]
+      Resource = var.db_password_secret_arn
+    }]
+  })
+}
+
+# KMS decrypt + generate data key for S3/RDS operations
 resource "aws_iam_role_policy" "compute_task_kms" {
-  count = var.kms_key_arn != "" ? 1 : 0
-  name  = "${local.prefix}-iam-compute-task-kms"
-  role  = aws_iam_role.compute_task.id
+  name = "${local.prefix}-iam-compute-task-kms"
+  role = aws_iam_role.compute_task.id
 
   policy = jsonencode({
     Version = "2012-10-17"
