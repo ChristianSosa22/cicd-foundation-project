@@ -195,15 +195,15 @@ module "compute" {
 module "iam" {
   source = "./modules/iam"
 
-  project_name        = var.project_name
-  environment         = var.environment
-  region              = var.region
-  receipts_bucket_arn = module.storage.bucket_arn
-  rds_instance_arn    = module.database.db_instance_arn
-  db_username         = var.db_username
-  receipt_queue_arn   = module.async_receipt.queue_arn
-  release_queue_arn   = module.async_release.queue_arn
-  email_queue_arn     = module.async_email.queue_arn
+  project_name           = var.project_name
+  environment            = var.environment
+  region                 = var.region
+  receipts_bucket_arn    = module.storage.bucket_arn
+  rds_instance_arn       = module.database.db_instance_arn
+  db_username            = var.db_username
+  receipt_queue_arn      = module.async_receipt.queue_arn
+  release_queue_arn      = module.async_release.queue_arn
+  email_queue_arn        = module.async_email.queue_arn
   sns_topic_arn          = ""
   kms_key_arn            = module.kms.key_arn
   db_password_secret_arn = module.secrets.db_password_secret_arn

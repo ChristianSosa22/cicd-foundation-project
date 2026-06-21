@@ -2,10 +2,10 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  prefix            = "${var.project_name}-${var.environment}"
-  account_id        = data.aws_caller_identity.current.account_id
-  compute_exec_arn  = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-exec"
-  compute_task_arn  = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-task"
+  prefix           = "${var.project_name}-${var.environment}"
+  account_id       = data.aws_caller_identity.current.account_id
+  compute_exec_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-exec"
+  compute_task_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-task"
 }
 
 resource "aws_kms_key" "main" {
