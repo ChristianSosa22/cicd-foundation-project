@@ -189,7 +189,8 @@ module "compute" {
   sqs_queue_arn            = module.async_receipt.queue_arn
   worker_desired_count     = var.worker_desired_count
   polling_batch_size       = var.polling_batch_size
-  depends_on               = [module.network, module.security, module.ecr, module.secrets, module.alb]
+  kms_key_arn              = module.kms.key_arn
+  depends_on               = [module.network, module.security, module.ecr, module.secrets, module.alb, module.kms]
 }
 
 module "iam" {

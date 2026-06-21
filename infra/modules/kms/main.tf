@@ -6,6 +6,7 @@ locals {
   account_id       = data.aws_caller_identity.current.account_id
   compute_exec_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-exec"
   compute_task_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-task"
+  worker_task_arn  = "arn:aws:iam::${local.account_id}:role/${local.prefix}-worker-task-role"
   ci_runner_arn    = "arn:aws:iam::${local.account_id}:role/gha-deploy-${var.environment}"
 }
 
@@ -46,13 +47,15 @@ resource "aws_kms_key" "main" {
       },
       {
         # Cryptographic usage restricted to the ECS execution role
-        # (pulls secrets at container start) and the ECS task role (app runtime).
+        # (pulls secrets at container start), the ECS task role (app runtime),
+        # and the worker task role (writes SSE-KMS objects to S3).
         Sid    = "ComputeRoleUsage"
         Effect = "Allow"
         Principal = {
           AWS = [
             local.compute_exec_arn,
-            local.compute_task_arn
+            local.compute_task_arn,
+            local.worker_task_arn
           ]
         }
         Action = [

@@ -71,6 +71,25 @@ resource "aws_iam_role_policy" "worker_s3" {
   })
 }
 
+# KMS permission so the worker can write SSE-KMS encrypted objects to S3.
+resource "aws_iam_role_policy" "worker_kms" {
+  name = "${var.name}-${var.environment}-worker-kms"
+  role = aws_iam_role.worker_task.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "kms:GenerateDataKey",
+        "kms:Decrypt",
+        "kms:DescribeKey"
+      ]
+      Resource = var.kms_key_arn
+    }]
+  })
+}
+
 # ── Worker task definition ────────────────────────────────────────────────────
 # Same image as the API, but command overridden to the worker entrypoint.
 resource "aws_ecs_task_definition" "worker" {
