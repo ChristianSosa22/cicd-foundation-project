@@ -260,6 +260,24 @@ release_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-projec
 
 El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).
 
+### Event-Driven Compute
+
+### Terraform plan — event-source-plan.txt
+
+El archivo [`evidence/event-source-plan.txt`](evidence/event-source-plan.txt) muestra el
+`terraform plan` con los recursos del worker de ECS Fargate y su conexión al módulo async:
+el `RECEIPT_QUEUE_URL` de SQS se inyecta como variable de entorno en el task definition
+del worker, implementando el VPC track de cómputo asíncrono.
+
+### ECS Worker — variable de entorno RECEIPT_QUEUE_URL
+
+![Variable RECEIPT_QUEUE_URL configurada en el task definition del worker de ECS](evidence/event-source.png)
+
+> Capturado desde **AWS Console → ECS → Task Definitions → oyd-project-dev-worker**,
+> mostrando `RECEIPT_QUEUE_URL` apuntando a la SQS queue de recibos — el trigger
+> que conecta el módulo async al servicio de cómputo.
+
+
 ### Scheduler: EventBridge Release Sweep
 
 El EventBridge Scheduler `oyd-project-dev-release-expired` dispara un `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release-queue`. El IAM role del scheduler tiene `sqs:SendMessage` scoped exclusivamente al ARN de la release-queue (sin wildcard).

@@ -180,3 +180,9 @@ variable "polling_batch_size" {
   type        = number
   default     = 10
 }
+
+variable "kms_key_arn" {
+  description = "ARN of the KMS CMK used to encrypt the S3 receipts bucket. The worker task role needs GenerateDataKey to write SSE-KMS objects."
+  type        = string
+  default     = ""
+}
