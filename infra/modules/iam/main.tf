@@ -546,6 +546,32 @@ resource "aws_iam_role_policy" "ci_runner_terraform" {
             "aws:RequestedRegion" = var.region
           }
         }
+      },
+      {
+        # KMS permissions needed to create/update SSM parameters and Secrets Manager
+        # secrets encrypted with the project CMK during terraform apply.
+        Effect = "Allow"
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey",
+          "kms:ListKeys",
+          "kms:ListAliases",
+          "kms:CreateKey",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:UpdateAlias",
+          "kms:EnableKeyRotation",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:PutKeyPolicy",
+          "kms:TagResource",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion"
+        ]
+        Resource = "*"
       }
     ]
   })

@@ -6,6 +6,7 @@ locals {
   account_id       = data.aws_caller_identity.current.account_id
   compute_exec_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-exec"
   compute_task_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-task"
+  ci_runner_arn    = "arn:aws:iam::${local.account_id}:role/gha-deploy-${var.environment}"
 }
 
 resource "aws_kms_key" "main" {
@@ -101,6 +102,23 @@ resource "aws_kms_key" "main" {
             "kms:CallerAccount" = local.account_id
           }
         }
+      },
+      {
+        # CI runner (OIDC role) needs encrypt/decrypt to create and update
+        # SSM parameters and Secrets Manager secrets with this CMK during apply.
+        Sid    = "CIRunnerUsage"
+        Effect = "Allow"
+        Principal = {
+          AWS = local.ci_runner_arn
+        }
+        Action = [
+          "kms:Encrypt",
+          "kms:Decrypt",
+          "kms:ReEncrypt*",
+          "kms:GenerateDataKey*",
+          "kms:DescribeKey"
+        ]
+        Resource = "*"
       },
       {
         # S3 service principal: generate data keys for SSE-KMS object encryption.
