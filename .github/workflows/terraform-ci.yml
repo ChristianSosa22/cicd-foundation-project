@@ -8,6 +8,16 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
+  # DELIVERY J (disabled temporarily — re-enable after Slack bot is deployed)
+  # workflow_dispatch:
+  #   inputs:
+  #     environment:
+  #       description: "Target environment to deploy (dev or staging)"
+  #       required: true
+  #       type: choice
+  #       options:
+  #         - dev
+  #         - staging
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
@@ -107,6 +117,8 @@ jobs:
         run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
 
       - name: Terraform Apply
+        env:
+          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
         run: terraform apply -auto-approve -input=false -var-file=envs/dev/dev.tfvars
 
       - name: Migrate database (ECS run-task inside the VPC)
@@ -313,3 +325,53 @@ jobs:
             aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
           done
           echo "All services rolled onto latest task definitions."
+
+  # DELIVERY J (disabled temporarily — re-enable after Slack bot is deployed)
+  # ── Bot-triggered deploy (workflow_dispatch from Slack /deploy command) ──────
+  # deploy-manual:
+  #   if: github.event_name == 'workflow_dispatch'
+  #   name: Deploy → ${{ github.event.inputs.environment }} (bot)
+  #   runs-on: ubuntu-latest
+  #   environment: ${{ github.event.inputs.environment }}
+  #   concurrency:
+  #     group: deploy-${{ github.event.inputs.environment }}
+  #     cancel-in-progress: false
+  #   permissions:
+  #     id-token: write
+  #     contents: read
+  #   defaults:
+  #     run:
+  #       working-directory: ./infra
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #     - name: Set up Terraform
+  #       uses: hashicorp/setup-terraform@v3
+  #       with:
+  #         terraform_version: "~> 1.8"
+  #     - name: Configure AWS Credentials (OIDC)
+  #       uses: aws-actions/configure-aws-credentials@v4
+  #       with:
+  #         role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+  #         aws-region: ${{ vars.AWS_REGION }}
+  #     - name: Terraform Init
+  #       run: terraform init -input=false -backend-config="key=env/${{ github.event.inputs.environment }}/terraform.tfstate"
+  #     - name: Terraform Apply
+  #       run: terraform apply -auto-approve -input=false -var-file=envs/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}.tfvars
+  #     - name: Deploy services to ECS
+  #       env:
+  #         AWS_REGION: ${{ vars.AWS_REGION }}
+  #       run: |
+  #         CLUSTER=$(terraform output -raw ecs_cluster_name)
+  #         PREFIX="${CLUSTER%-cluster}"
+  #         for SVC in api web worker; do
+  #           aws ecs update-service \
+  #             --cluster "$CLUSTER" \
+  #             --service "$PREFIX-$SVC-svc" \
+  #             --task-definition "$PREFIX-$SVC" \
+  #             --force-new-deployment >/dev/null
+  #         done
+  #         for SVC in api web worker; do
+  #           aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+  #         done
+  #         echo "Bot-triggered deployment to ${{ github.event.inputs.environment }} complete."
