@@ -67,7 +67,10 @@ resource "aws_ecs_task_definition" "api" {
       { name = "PORT", value = "8080" },
       { name = "AWS_REGION", value = var.aws_region },
       { name = "S3_BUCKET", value = var.s3_bucket },
-      { name = "RECEIPT_QUEUE_URL", value = var.sqs_queue_url }
+      { name = "RECEIPT_QUEUE_URL", value = var.sqs_queue_url },
+      # Non-sensitive ARN pointer — the app calls GetSecretValue at startup
+      # to retrieve the actual password and build the DB connection string.
+      { name = "DB_PASSWORD_SECRET_ARN", value = var.db_password_secret_arn }
     ]
 
     # Secret config pulled from SSM at container start — never stored in plaintext

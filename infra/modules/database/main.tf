@@ -44,6 +44,7 @@ resource "aws_db_instance" "default" {
 
   multi_az               = var.multi_az
   storage_encrypted      = true
+  kms_key_id             = var.kms_key_arn
   publicly_accessible    = false
   db_subnet_group_name   = aws_db_subnet_group.default.name
   vpc_security_group_ids = [var.db_security_group_id]

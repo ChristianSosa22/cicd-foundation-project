@@ -72,6 +72,11 @@ variable "deletion_protection" {
   default     = false
 }
 
+variable "kms_key_arn" {
+  description = "ARN of the KMS CMK used to encrypt the RDS storage. Requires storage_encrypted = true."
+  type        = string
+}
+
 variable "subnet_ids" {
   description = "Private subnet IDs used for the RDS DB subnet group. The DB will only be reachable from within these subnets."
   type        = list(string)

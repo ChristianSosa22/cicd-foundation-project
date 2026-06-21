@@ -19,14 +19,16 @@ resource "aws_s3_bucket_versioning" "this" {
   }
 }
 
-# Encryption: all objects stored with AES256 server-side encryption
+# Encryption: all objects encrypted with customer-managed KMS key (CMK)
 resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
   bucket = aws_s3_bucket.this.id
 
   rule {
     apply_server_side_encryption_by_default {
-      sse_algorithm = "AES256"
+      sse_algorithm     = "aws:kms"
+      kms_master_key_id = var.kms_key_arn
     }
+    bucket_key_enabled = true
   }
 }
 

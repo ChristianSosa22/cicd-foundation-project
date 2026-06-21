@@ -9,7 +9,14 @@ variable "environment" {
 }
 
 variable "kms_key_id" {
-  description = "Optional KMS key ID or ARN for encrypting SSM SecureString parameters. Leave empty to use the default AWS managed key (alias/aws/ssm), which is free."
+  description = "KMS key ARN or ID for encrypting SSM SecureString parameters and Secrets Manager secrets. Leave empty to use the AWS managed default key."
   type        = string
+  default     = ""
+}
+
+variable "db_password" {
+  description = "Master password for the RDS instance. Required only on the initial apply to seed the Secrets Manager secret; leave empty on subsequent runs (lifecycle ignore_changes prevents overwrites). Supply via TF_VAR_db_password — never commit this value."
+  type        = string
+  sensitive   = true
   default     = ""
 }

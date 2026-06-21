@@ -70,9 +70,10 @@ variable "db_username" {
 }
 
 variable "db_password" {
-  description = "Master password for the RDS instance. Sensitive — supply via TF_VAR_db_password or a CI secret. Not used by the app (app reads DATABASE_URL from SSM); only needed for Terraform to provision the RDS instance."
+  description = "Master password for the RDS instance. Required on the initial apply (to seed the RDS instance and the Secrets Manager secret). Leave empty on subsequent pipeline runs — the secret value is preserved by lifecycle ignore_changes and the app fetches it from Secrets Manager at runtime. Supply via TF_VAR_db_password — never commit this value."
   type        = string
   sensitive   = true
+  default     = ""
 }
 
 variable "db_port" {
@@ -288,6 +289,20 @@ variable "observability_log_retention_days" {
   description = "Retention period in days for the observability CloudWatch log group. Use 30 for dev and 90 for production."
   type        = number
   default     = 30
+}
+
+# ── KMS module ────────────────────────────────────────────────────────────────
+
+variable "kms_key_alias" {
+  description = "KMS alias name (without the 'alias/' prefix) for the CMK used to encrypt S3 and RDS. Defaults to '<project_name>-<environment>-cmk' when left empty."
+  type        = string
+  default     = ""
+}
+
+variable "kms_key_deletion_window_in_days" {
+  description = "Days to wait before deleting the CMK after a destroy. Valid range: 7–30."
+  type        = number
+  default     = 7
 }
 
 # ── TLS / HTTPS ───────────────────────────────────────────────────────────────

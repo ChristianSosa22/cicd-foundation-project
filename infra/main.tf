@@ -1,3 +1,7 @@
+locals {
+  kms_key_alias = var.kms_key_alias != "" ? var.kms_key_alias : "${var.project_name}-${var.environment}-cmk"
+}
+
 # Module call order: network → security → ecr → storage → database → secrets → → async → scheduler → compute.
 # Security provides the chained SGs (web/ALB, app, web-service, db). The ALB reuses the
 # web (public-facing) SG from the security module and registers task IPs in its target groups.
@@ -37,11 +41,23 @@ module "ecr" {
   environment = var.environment
 }
 
+module "kms" {
+  source = "./modules/kms"
+
+  project_name                = var.project_name
+  environment                 = var.environment
+  kms_key_alias               = local.kms_key_alias
+  key_deletion_window_in_days = var.kms_key_deletion_window_in_days
+}
+
 module "storage" {
   source = "./modules/storage"
 
   name        = var.project_name
   environment = var.environment
+  kms_key_arn = module.kms.key_arn
+
+  depends_on = [module.kms]
 }
 
 module "database" {
@@ -61,8 +77,9 @@ module "database" {
   deletion_protection  = var.deletion_protection
   subnet_ids           = module.network.private_data_subnet_ids
   db_security_group_id = module.security.db_security_group_id
+  kms_key_arn          = module.kms.key_arn
 
-  depends_on = [module.network, module.security]
+  depends_on = [module.network, module.security, module.kms]
 }
 
 module "secrets" {
@@ -70,6 +87,10 @@ module "secrets" {
 
   name        = var.project_name
   environment = var.environment
+  kms_key_id  = module.kms.key_arn
+  db_password = var.db_password
+
+  depends_on = [module.kms]
 }
 
 module "async_receipt" {
@@ -146,7 +167,8 @@ module "compute" {
   s3_bucket  = module.storage.bucket_name
 
   # Secret ARNs from SSM — Fargate pulls values at container start
-  secret_arns = module.secrets.parameter_arns
+  secret_arns            = module.secrets.parameter_arns
+  db_password_secret_arn = module.secrets.db_password_secret_arn
 
   # IAM roles from the centralized IAM module
   compute_exec_role_arn = module.iam.compute_exec_role_arn
@@ -182,10 +204,11 @@ module "iam" {
   receipt_queue_arn   = module.async_receipt.queue_arn
   release_queue_arn   = module.async_release.queue_arn
   email_queue_arn     = module.async_email.queue_arn
-  sns_topic_arn       = ""
-  kms_key_arn         = ""
-  github_repo         = var.github_repo
-  oidc_provider_arn   = ""
+  sns_topic_arn          = ""
+  kms_key_arn            = module.kms.key_arn
+  db_password_secret_arn = module.secrets.db_password_secret_arn
+  github_repo            = var.github_repo
+  oidc_provider_arn      = ""
 }
 
 module "observability" {
