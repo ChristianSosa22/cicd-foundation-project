@@ -170,17 +170,6 @@ module "compute" {
   depends_on               = [module.network, module.security, module.ecr, module.secrets, module.alb]
 }
 
-module "jumphost" {
-  source = "./modules/jumphost"
-
-  name              = var.project_name
-  environment       = var.environment
-  subnet_id         = module.network.private_app_subnet_ids[0]
-  security_group_id = module.security.app_security_group_id
-
-  depends_on = [module.network, module.security]
-}
-
 module "iam" {
   source = "./modules/iam"
 
