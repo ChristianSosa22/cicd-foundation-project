@@ -382,22 +382,6 @@ HTTP/2 202
 > **AWS Console → S3 → oyd-project-receipts-dev → receipts/async/**, mostrando el objeto
 > `.json` depositado por el worker tras procesar el mensaje de SQS.
 
-### EKS Async Integration (EKS Track Only)
-
-#### KEDA ScaledObject
-
-![KEDA ScaledObject configurado para escalar el worker según mensajes en SQS](evidence/keda-scaled-object.png)
-
-> KEDA `ScaledObject` apuntando a la receipt SQS queue, escalando el deployment del
-> worker de 0 a N réplicas según el número de mensajes visibles en la cola.
-
-#### KEDA HPA
-
-![Horizontal Pod Autoscaler generado por KEDA](evidence/keda-hpa.png)
-
-> **kubectl get hpa**, mostrando el HPA generado automáticamente por KEDA a partir
-> del `ScaledObject`, con las métricas de escalado activas.
-
 ### IAM Module — Centralized Least-Privilege Roles (Deliverable A)
 
 
