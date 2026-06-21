@@ -260,25 +260,7 @@ release_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-projec
 
 El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).
 
-### Event-Driven Compute
-
-### Terraform plan — event-source-plan.txt
-
-El archivo [`evidence/event-source-plan.txt`](evidence/event-source-plan.txt) muestra el
-`terraform plan` con los recursos del worker de ECS Fargate y su conexión al módulo async:
-el `RECEIPT_QUEUE_URL` de SQS se inyecta como variable de entorno en el task definition
-del worker, implementando el VPC track de cómputo asíncrono.
-
-### ECS Worker — variable de entorno RECEIPT_QUEUE_URL
-
-![Variable RECEIPT_QUEUE_URL configurada en el task definition del worker de ECS](evidence/event-source.png)
-
-> Capturado desde **AWS Console → ECS → Task Definitions → oyd-project-dev-worker**,
-> mostrando `RECEIPT_QUEUE_URL` apuntando a la SQS queue de recibos — el trigger
-> que conecta el módulo async al servicio de cómputo.
-
-
-### Scheduler: EventBridge Release Sweep
+#### Scheduler: EventBridge Release Sweep
 
 El EventBridge Scheduler `oyd-project-dev-release-expired` dispara un `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release-queue`. El IAM role del scheduler tiene `sqs:SendMessage` scoped exclusivamente al ARN de la release-queue (sin wildcard).
 
@@ -288,6 +270,117 @@ scheduler_schedule_name = "oyd-project-dev-release-expired"
 ```
 
 El archivo completo se encuentra en [`evidence/async-foundation.txt`](evidence/async-foundation.txt).
+
+### Scheduled Jobs
+
+#### EventBridge Scheduler — plan de Terraform
+
+El archivo [`evidence/scheduler-plan.txt`](evidence/scheduler-plan.txt) muestra el `terraform plan`
+con los recursos del módulo `infra/modules/scheduler/`: el schedule `oyd-project-dev-release-expired`
+que dispara `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release-queue`.
+
+#### EventBridge Scheduler — consola de AWS
+
+![EventBridge Scheduler oyd-project-dev-release-expired configurado en AWS Console](evidence/scheduler.png)
+
+> **AWS Console → EventBridge → Schedules**, mostrando el schedule activo con su expresión
+> cron, el target SQS y el IAM role con `sqs:SendMessage` scoped al ARN de la release-queue.
+
+### Full CD Pipeline
+
+#### GitHub Environments
+
+![Environments dev y prod configurados en GitHub Settings](evidence/github-environments.png)
+
+> **GitHub → Settings → Environments**, mostrando los ambientes `dev` y `prod` con sus
+> revisores requeridos y reglas de protección.
+
+#### CI Apply — dev
+
+![Pipeline terraform apply exitoso en ambiente dev](evidence/ci-apply-dev.png)
+
+> **GitHub Actions → terraform-ci.yml → Deploy → dev**, mostrando el `terraform apply`
+> completado exitosamente tras el merge a `main`.
+
+#### CI Apply — staging
+
+![Pipeline terraform apply exitoso en ambiente staging](evidence/ci-apply-staging.png)
+
+> **GitHub Actions → terraform-ci.yml → Deploy → staging**, mostrando el `terraform apply`
+> completado exitosamente en el ambiente de staging.
+
+#### CI Destroy
+
+![Pipeline terraform destroy ejecutado correctamente](evidence/ci-destroy.png)
+
+> **GitHub Actions → destroy.yml**, mostrando la destrucción controlada de recursos
+> mediante el workflow de teardown.
+
+#### CI Drift Detection
+
+![Drift detection detectando o confirmando ausencia de drift](evidence/ci-drift.png)
+
+> **GitHub Actions → drift-detection.yml**, mostrando el `terraform plan` periódico
+> que detecta cambios manuales fuera de IaC.
+
+#### Branch Ruleset — configuración
+
+![Branch ruleset configurado en GitHub con required checks](evidence/ruleset-config.png)
+
+> **GitHub → Settings → Rules → Rulesets**, mostrando el ruleset de `main` con
+> el check `Terraform Plan (dev)` como required status check.
+
+#### Branch Ruleset — merge bloqueado
+
+![Intento de merge bloqueado por el ruleset antes de que pase el plan](evidence/ruleset-blocked-merge.png)
+
+> Merge bloqueado por el ruleset cuando el `terraform plan` no ha pasado o tiene errores,
+> demostrando que la protección de la rama principal está activa.
+
+### Event-Driven Compute
+
+#### Terraform plan — event-source-plan.txt
+
+El archivo [`evidence/event-source-plan.txt`](evidence/event-source-plan.txt) muestra el
+`terraform plan` con los recursos del worker de ECS Fargate y su conexión al módulo async:
+el `RECEIPT_QUEUE_URL` de SQS se inyecta como variable de entorno en el task definition
+del worker, implementando el VPC track de cómputo asíncrono.
+
+#### ECS Worker — variable de entorno RECEIPT_QUEUE_URL
+
+![Variable RECEIPT_QUEUE_URL configurada en el task definition del worker de ECS](evidence/event-source.png)
+
+> Capturado desde **AWS Console → ECS → Task Definitions → oyd-project-dev-worker**,
+> mostrando `RECEIPT_QUEUE_URL` apuntando a la SQS queue de recibos — el trigger
+> que conecta el módulo async al servicio de cómputo.
+
+### End-to-End Async Proof
+
+#### curl POST → /api/reservas/enqueue (HTTP 202)
+
+El archivo [`evidence/async-enqueue.txt`](evidence/async-enqueue.txt) contiene la salida
+completa del comando curl contra el endpoint de enqueue, demostrando que la API acepta
+el payload y retorna `HTTP 202` con el `message_id` asignado por SQS:
+
+```
+HTTP/2 202
+{"message_id":"fdf56c56-4ebe-4434-94d1-17528bb170db","status":"accepted"}
+```
+
+#### CloudWatch Logs — worker procesando mensaje de SQS
+
+![CloudWatch log del worker confirmando procesamiento del mensaje y escritura en S3](evidence/async-consumer.png)
+
+> **AWS Console → CloudWatch → Log groups → `/ecs/oyd-project-dev/worker`**, mostrando
+> el log `[receiptConsumer] processed message and wrote object to S3` con el `messageId`
+> y la key del objeto creado en el bucket de recibos.
+
+#### Objeto en S3 — recibo generado por el worker
+
+![Objeto JSON creado en el bucket S3 de recibos por el worker async](evidence/async-object.png)
+
+> **AWS Console → S3 → oyd-project-receipts-dev → receipts/async/**, mostrando el objeto
+> `.json` depositado por el worker tras procesar el mensaje de SQS.
 
 ### IAM Module — Centralized Least-Privilege Roles (Deliverable A)
 

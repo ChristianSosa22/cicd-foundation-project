@@ -19,6 +19,17 @@ resource "aws_kms_key" "main" {
     Version = "2012-10-17"
     Statement = [
       {
+        # Allows IAM policies in this account to delegate KMS usage to users and roles.
+        # Without this statement, the key policy is the only access control layer.
+        Sid    = "EnableIAMUserPermissions"
+        Effect = "Allow"
+        Principal = {
+          AWS = "arn:aws:iam::${local.account_id}:root"
+        }
+        Action   = "kms:*"
+        Resource = "*"
+      },
+      {
         # Key administration only — no cryptographic usage actions.
         # Root can rotate, disable, schedule deletion, and manage grants,
         # but cannot use the key for encrypt/decrypt operations directly.
