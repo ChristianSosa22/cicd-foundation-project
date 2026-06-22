@@ -47,7 +47,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
       - name: Terraform Plan (drift check)
         id: plan
@@ -57,6 +57,20 @@ jobs:
           terraform plan -detailed-exitcode -input=false \
             -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # Publish the plan to the run summary so it's inspectable from the Actions
+      # UI without repository access.
+      - name: Publish plan to job summary
+        if: always()
+        run: |
+          {
+            echo "## Terraform drift plan — dev"
+            echo "Exit code: ${{ steps.plan.outputs.exit_code }} (0 = no drift, 2 = drift detected)"
+            echo ""
+            echo '```'
+            cat plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open or update drift issue
         if: steps.plan.outputs.exit_code == '2'
@@ -127,7 +141,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/prod/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/prod/backend-prod.hcl
 
       - name: Terraform Plan (drift check)
         id: plan
@@ -136,6 +150,20 @@ jobs:
           terraform plan -detailed-exitcode -input=false \
             -var-file=envs/prod/prod.tfvars -no-color 2>&1 | tee plan.txt
           echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+
+      # Publish the plan to the run summary so it's inspectable from the Actions
+      # UI without repository access.
+      - name: Publish plan to job summary
+        if: always()
+        run: |
+          {
+            echo "## Terraform drift plan — production"
+            echo "Exit code: ${{ steps.plan.outputs.exit_code }} (0 = no drift, 2 = drift detected)"
+            echo ""
+            echo '```'
+            cat plan.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Open or update drift issue
         if: steps.plan.outputs.exit_code == '2'

@@ -65,17 +65,23 @@ una clave hardcodeada (`infra/terraform.tfstate`), lo que hacía imposible opera
 entornos sin que uno sobreescribiera el estado del otro. Se migró a un **partial
 backend**: `infra/backend.tf` declara el bucket, la región y la tabla DynamoDB, pero
 omite la `key`. Cada entorno aporta su propia clave en tiempo de `init` mediante un
-archivo `.hcl` dedicado (`infra/envs/dev/backend.hcl` → `env/dev/terraform.tfstate`,
-`infra/envs/prod/backend.hcl` → `env/prod/terraform.tfstate`). El comando de
-inicialización pasa a ser `terraform init -backend-config=envs/<env>/backend.hcl`.
-Ambos entornos comparten el mismo bucket y la misma tabla de locks, pero sus estados
-son completamente independientes: un `apply` sobre `prod` no puede tocar el estado de
-`dev` ni viceversa.
+archivo `backend-<env>.hcl` dedicado (`infra/envs/dev/backend-dev.hcl` →
+`env/dev/terraform.tfstate`, `infra/envs/staging/backend-staging.hcl` →
+`env/staging/terraform.tfstate`, `infra/envs/prod/backend-prod.hcl` →
+`env/prod/terraform.tfstate`). El comando de inicialización pasa a ser
+`terraform init -backend-config=envs/<env>/backend-<env>.hcl`, y todos los workflows de
+CI (`terraform-ci.yml`, `drift-detection.yml`, `destroy.yml`) lo aplican de forma
+consistente. Los entornos comparten el mismo bucket y la misma tabla de locks, pero sus
+estados son completamente independientes: un `apply` sobre `prod` no puede tocar el
+estado de `dev` ni viceversa.
 
-**Estructura de entornos dev y prod.** La separación de entornos se gestiona con
-`-var-file`, no con Terraform workspaces, manteniendo los estados explícitos y
+**Estructura de entornos dev, staging y prod.** La separación de entornos se gestiona
+con `-var-file`, no con Terraform workspaces, manteniendo los estados explícitos y
 auditables. `infra/envs/dev/dev.tfvars` define el entorno de desarrollo (un solo NAT
-Gateway, `db.t3.micro`, sin Multi-AZ, `deletion_protection = false`). El nuevo
+Gateway, `db.t3.micro`, sin Multi-AZ, `deletion_protection = false`).
+`infra/envs/staging/staging.tfvars` provee un entorno production-like que difiere de dev
+en al menos tres valores: NAT por AZ (`single_nat_gateway = false`), `db.t3.small`,
+`multi_az = true`, `deletion_protection = true` y retención de SQS de 7 días.
 `infra/envs/prod/prod.tfvars` replica los ajustes de alta disponibilidad: NAT por AZ
 (`single_nat_gateway = false`), `db.t3.small`, `multi_az = true`, retención de SQS de
 7 días y `deletion_protection = true` — garantizando que un `terraform destroy` en
@@ -93,26 +99,72 @@ detección de drift); `gha-deploy-prod`, exclusivamente desde el Environment `pr
 `role-to-assume`, lo que emite credenciales temporales de 1 hora sin ninguna clave
 almacenada en GitHub Secrets.
 
-**GitHub Environments y ruleset de rama.** Se configuraron dos GitHub Environments:
-`dev` (sin gate de aprobación) y `prod` (revisor requerido — el merge a producción
-queda bloqueado hasta que un humano apruebe el deployment). El ruleset sobre `main`
-impone que todo cambio llegue vía Pull Request con al menos 1 aprobación y con el
-check `Terraform Plan (dev)` en verde, y bloquea force-push y eliminación de la rama.
-Esto cierra el ciclo: no es posible modificar la infraestructura sin revisión de código
-ni sin un plan aprobado.
+**Ruleset de rama sobre `main`.** El ruleset (`infra/docs/main-ruleset.json`, aplicado
+con `gh api repos/<org>/<repo>/rulesets -X POST`) está en modo **Active** y exige: (1)
+**Pull Request** antes de mergear (con ≥1 aprobación) — los pushes directos a `main` se
+rechazan; (2) **tres required status checks** que el workflow de PR expone como jobs
+independientes con nombres exactos — **`terraform fmt`**, **`terraform validate`** y
+**`terraform plan`** — de modo que un PR con cualquiera fallando o pendiente no puede
+mergearse; (3) **branches up to date** (`strict_required_status_checks_policy: true`): un
+PR atrasado respecto a `main` debe actualizarse y re-correr sus checks antes de habilitar
+el merge; (4) **block force pushes** (`non_fast_forward`) para todos, incluidos admins; y
+(5) **block deletions** (`deletion`) de la rama. El `bypass_actors` está vacío: nadie
+saltea el ruleset por el flujo normal (un break-glass de repo-admin sería aceptable pero
+no es la vía de merge habitual). Los tres checks son jobs separados —y no steps— porque
+GitHub reporta el status a nivel de job; el nombre en el ruleset debe coincidir
+exactamente con el `name:` del job o el check nunca reporta y la regla se daría por
+satisfecha en silencio.
 
-**Pipeline de tres fases (plan → deploy-dev → deploy-prod).** El workflow
-`.github/workflows/terraform-ci.yml` reemplaza el job único anterior por tres jobs
-condicionales. El job `plan` corre en cada PR contra `main`, autentica con el rol dev,
-inicializa con `envs/dev/backend.hcl` y ejecuta `terraform plan -var-file=envs/dev/dev.tfvars`,
-publicando el diff como comentario colapsable en el PR — este job es el required status
-check del ruleset. Al mergear, `deploy-dev` corre automáticamente (environment `dev`,
-sin gate) y aplica el plan sobre dev seguido del seed idempotente de la base de datos
-vía `ecs run-task`. Solo cuando `deploy-dev` termina exitosamente se activa
-`deploy-prod` (cláusula `needs: deploy-dev`), que pausa en "Waiting for review" hasta
-la aprobación del Environment `prod`, luego inicializa con `envs/prod/backend.hcl` y
-aplica `prod.tfvars`. El grupo de `concurrency` por job (`deploy-dev` / `deploy-prod`)
-garantiza que dos merges simultáneos no generen applies paralelos sobre el mismo entorno.
+**Pipeline de cuatro fases (plan → deploy-dev → deploy-staging → deploy-prod).** El
+workflow `.github/workflows/terraform-ci.yml` reemplaza el job único anterior por jobs
+condicionales encadenados. El job `plan` corre en cada PR contra `main`, autentica con
+el rol dev, inicializa con `envs/dev/backend-dev.hcl` y ejecuta
+`terraform plan -var-file=envs/dev/dev.tfvars`, publicando el diff como comentario
+colapsable en el PR — este job es el required status check del ruleset. Al mergear,
+`deploy-dev` corre automáticamente (environment `dev`, sin gate) y aplica el plan sobre
+dev seguido del seed idempotente de la base de datos vía `ecs run-task`. Cuando
+`deploy-dev` termina exitosamente se activa `deploy-staging` (cláusula
+`needs: deploy-dev`, environment `staging`), que **pausa en "Waiting for review" hasta la
+aprobación de un required reviewer** antes de inicializar con
+`envs/staging/backend-staging.hcl` y aplicar `-var-file=envs/staging/staging.tfvars`.
+Solo tras el éxito de staging se habilita `deploy-prod` (`needs: deploy-staging`,
+environment `prod`), que vuelve a pausar para aprobación y aplica `prod.tfvars`. El grupo
+de `concurrency` por job (`deploy-dev` / `deploy-staging` / `deploy-prod`) garantiza que
+dos merges simultáneos no generen applies paralelos sobre el mismo entorno.
+
+**GitHub Environments, required reviewers y namespacing de secretos.** Se configuran tres
+GitHub Environments en *Settings → Environments*:
+
+| Environment | Required reviewers | Secreto de BD (env-scoped) | Rol OIDC (variable `AWS_DEPLOY_ROLE_ARN`) |
+|---|---|---|---|
+| `dev`     | ninguno (deploy automático al mergear) | `DEV_DB_PASSWORD`     | `gha-deploy-dev`     |
+| `staging` | **ChristianSosa22, analopez-24, Pablokill2004** | `STAGING_DB_PASSWORD` | `gha-deploy-staging` |
+| `prod`    | ChristianSosa22, analopez-24, Pablokill2004 | — (default `db_password = ""`) | `gha-deploy-prod` |
+
+Los secretos sensibles por entorno se almacenan **a nivel de Environment, nunca como
+secretos de repositorio**: `deploy-dev` lee `secrets.DEV_DB_PASSWORD` y `deploy-staging`
+lee `secrets.STAGING_DB_PASSWORD`, cada uno inyectado como `TF_VAR_db_password`. Así un
+job no puede acceder al secreto de otro entorno. El rol IAM de cada entorno se crea en
+`infra/bootstrap/oidc.tf` (`gha-deploy-staging` con trust policy restringida a la claim
+`environment:staging`) y su ARN se publica como output del bootstrap
+(`gha_deploy_staging_role_arn`) para copiarlo en la variable `AWS_DEPLOY_ROLE_ARN` del
+Environment correspondiente.
+
+**Plan-artifact promotion (aplicar exactamente lo revisado).** El apply nunca usa
+`-auto-approve` ni re-planifica: aplica un plan guardado. En el path de dev el job `plan`
+(que corre en el PR y es el required check) genera `terraform plan -out=tfplan`, sube
+`tfplan` como artifact (`actions/upload-artifact`, nombre `tfplan-dev`) y publica el diff
+legible como comentario en el PR. Al mergear, `deploy-dev` localiza el run del `plan` por
+el `head SHA` del PR (`gh run list`), descarga ese **mismo** `tfplan`
+(`actions/download-artifact` con `run-id` — por eso el job declara `permissions: actions:
+read`) y ejecuta `terraform apply tfplan`. Como el plan se aplica verbatim, si el state
+cambió entre el plan del PR y el merge Terraform falla con *"saved plan is stale"* — la
+protección exacta que exige el requisito frente a re-planificar contra un state distinto.
+Para staging y prod —que aplican sobre state y `var-file` propios, donde un `tfplan` de
+dev no es válido— cada deploy job genera su `plan -out=tfplan` y hace `apply tfplan`
+dentro del mismo job (mismo state, sin ventana de drift), subiendo además el `tfplan` como
+artifact (`tfplan-staging` / `tfplan-prod`) para auditoría. Ningún apply del pipeline usa
+`-auto-approve`.
 
 **Detección de drift.** El workflow `.github/workflows/drift-detection.yml` corre
 diariamente a las 06:00 UTC (y bajo `workflow_dispatch`) sobre ambos entornos en

@@ -328,7 +328,7 @@ que dispara `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release
 ![Branch ruleset configurado en GitHub con required checks](evidence/ruleset-config.png)
 
 > **GitHub → Settings → Rules → Rulesets**, mostrando el ruleset de `main` con
-> el check `Terraform Plan (dev)` como required status check.
+> los required status checks `terraform fmt`, `terraform validate` y `terraform plan`.
 
 #### Branch Ruleset — merge bloqueado
 
