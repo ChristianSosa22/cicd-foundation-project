@@ -9,6 +9,7 @@
 #
 # After apply, copy the output role ARNs into GitHub:
 #   - Environment 'dev'        → variable AWS_DEPLOY_ROLE_ARN = gha_deploy_dev_role_arn
+#   - Environment 'staging'    → variable AWS_DEPLOY_ROLE_ARN = gha_deploy_staging_role_arn
 #   - Environment 'production' → variable AWS_DEPLOY_ROLE_ARN = gha_deploy_prod_role_arn
 #   - Repo-level               → variable AWS_DEPLOY_ROLE_ARN_DEV  = gha_deploy_dev_role_arn
 #   - Repo-level               → variable AWS_DEPLOY_ROLE_ARN_PROD = gha_deploy_prod_role_arn
@@ -79,6 +80,50 @@ resource "aws_iam_role" "gha_deploy_dev" {
   }
 }
 
+# ── Deploy role: staging ───────────────────────────────────────────────────────
+resource "aws_iam_role" "gha_deploy_staging" {
+  name = "gha-deploy-staging"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        # Used by deploy-staging job (environment: staging) — gated by the
+        # GitHub Environment's required-reviewer protection rule.
+        Sid       = "AllowStagingEnvironment"
+        Effect    = "Allow"
+        Principal = { Federated = aws_iam_openid_connect_provider.github_actions.arn }
+        Action    = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:${local.repo_ref}:environment:staging"
+          }
+        }
+      },
+      {
+        # Used by scheduled/dispatch jobs (drift detection) running on main.
+        Sid       = "AllowMainBranch"
+        Effect    = "Allow"
+        Principal = { Federated = aws_iam_openid_connect_provider.github_actions.arn }
+        Action    = "sts:AssumeRoleWithWebIdentity"
+        Condition = {
+          StringEquals = {
+            "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
+            "token.actions.githubusercontent.com:sub" = "repo:${local.repo_ref}:ref:refs/heads/main"
+          }
+        }
+      },
+    ]
+  })
+
+  tags = {
+    Purpose     = "gha-deploy"
+    Environment = "staging"
+    ManagedBy   = "terraform"
+  }
+}
+
 # ── Deploy role: production ────────────────────────────────────────────────────
 resource "aws_iam_role" "gha_deploy_prod" {
   name = "gha-deploy-prod"
@@ -129,6 +174,11 @@ resource "aws_iam_role" "gha_deploy_prod" {
 # shared/production AWS account.
 resource "aws_iam_role_policy_attachment" "gha_deploy_dev_admin" {
   role       = aws_iam_role.gha_deploy_dev.name
+  policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
+}
+
+resource "aws_iam_role_policy_attachment" "gha_deploy_staging_admin" {
+  role       = aws_iam_role.gha_deploy_staging.name
   policy_arn = "arn:aws:iam::aws:policy/AdministratorAccess"
 }
 

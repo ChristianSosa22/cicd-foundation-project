@@ -76,15 +76,15 @@ jobs:
         id: paths
         run: |
           if [ "${{ inputs.environment }}" = "prod" ]; then
-            echo "backend_key=env/prod/terraform.tfstate" >> "$GITHUB_OUTPUT"
-            echo "tfvars=envs/prod/prod.tfvars"           >> "$GITHUB_OUTPUT"
+            echo "backend_config=envs/prod/backend-prod.hcl" >> "$GITHUB_OUTPUT"
+            echo "tfvars=envs/prod/prod.tfvars"              >> "$GITHUB_OUTPUT"
           else
-            echo "backend_key=env/dev/terraform.tfstate" >> "$GITHUB_OUTPUT"
-            echo "tfvars=envs/dev/dev.tfvars"            >> "$GITHUB_OUTPUT"
+            echo "backend_config=envs/dev/backend-dev.hcl" >> "$GITHUB_OUTPUT"
+            echo "tfvars=envs/dev/dev.tfvars"              >> "$GITHUB_OUTPUT"
           fi
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=${{ steps.paths.outputs.backend_key }}"
+        run: terraform init -input=false -backend-config=${{ steps.paths.outputs.backend_config }}
 
       - name: Terraform Destroy
         run: terraform destroy -auto-approve -input=false -var-file=${{ steps.paths.outputs.tfvars }}

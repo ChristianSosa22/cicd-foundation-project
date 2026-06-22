@@ -47,7 +47,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
       - name: Terraform Plan (drift check)
         id: plan
@@ -127,7 +127,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/prod/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/prod/backend-prod.hcl
 
       - name: Terraform Plan (drift check)
         id: plan

@@ -56,7 +56,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
       - name: Terraform Format
         run: terraform fmt --check -recursive
@@ -114,11 +114,11 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/dev/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
       - name: Terraform Apply
         env:
-          TF_VAR_db_password: ${{ secrets.DB_PASSWORD }}
+          TF_VAR_db_password: ${{ secrets.DEV_DB_PASSWORD }}
         run: terraform apply -auto-approve -input=false -var-file=envs/dev/dev.tfvars
 
       - name: Migrate database (ECS run-task inside the VPC)
@@ -217,14 +217,125 @@ jobs:
           done
           echo "All services rolled onto latest task definitions."
 
-  # ── Deploy prod (runs after dev succeeds, gated by required reviewer) ──────
-  # Requires a human approval in the 'production' GitHub Environment before
+  # ── Deploy staging (runs after dev succeeds, gated by required reviewer) ────
+  # Pauses for a human approval in the 'staging' GitHub Environment before
   # Terraform applies. Configure the reviewer in:
-  #   GitHub → Settings → Environments → production → Required reviewers.
+  #   GitHub → Settings → Environments → staging → Required reviewers.
+  deploy-staging:
+    if: github.event.pull_request.merged == true
+    name: Deploy → staging
+    needs: deploy-dev
+    runs-on: ubuntu-latest
+    environment: staging
+    concurrency:
+      group: deploy-staging
+      cancel-in-progress: false
+    permissions:
+      id-token: write
+      contents: read
+    defaults:
+      run:
+        working-directory: ./infra
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "~> 1.8"
+
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Terraform Init
+        run: terraform init -input=false -backend-config=envs/staging/backend-staging.hcl
+
+      - name: Terraform Apply
+        env:
+          TF_VAR_db_password: ${{ secrets.STAGING_DB_PASSWORD }}
+        run: terraform apply -auto-approve -input=false -var-file=envs/staging/staging.tfvars
+
+      - name: Migrate database (ECS run-task inside the VPC)
+        # Same as dev/prod: applies pending Drizzle migrations, waits, and fails
+        # the pipeline on non-zero exit. No seed step — staging is production-like.
+        # Uses public subnets + assignPublicIp=ENABLED (no NAT Gateway required).
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          SG=$(terraform output -raw app_security_group_id)
+          SUBNETS=$(terraform output -json public_subnet_ids | tr -d '[]"' )
+          FAMILY="${CLUSTER%-cluster}-api"
+
+          TASKDEF=$(aws ecs describe-task-definition \
+            --task-definition "$FAMILY" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)
+
+          echo "Running migrations on $CLUSTER using $TASKDEF"
+
+          TASK_ARN=$(aws ecs run-task \
+            --cluster "$CLUSTER" \
+            --task-definition "$TASKDEF" \
+            --launch-type FARGATE \
+            --network-configuration "awsvpcConfiguration={subnets=[$SUBNETS],securityGroups=[$SG],assignPublicIp=ENABLED}" \
+            --overrides '{"containerOverrides":[{"name":"api","command":["npm","run","db:migrate"]}]}' \
+            --query 'tasks[0].taskArn' --output text)
+
+          echo "Waiting for migration task $TASK_ARN..."
+          aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
+
+          EXIT_CODE=$(aws ecs describe-tasks \
+            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
+            --query 'tasks[0].containers[0].exitCode' --output text)
+
+          if [ "$EXIT_CODE" != "0" ]; then
+            echo "Migration failed with exit code $EXIT_CODE"
+            TASK_ID="${TASK_ARN##*/}"
+            aws logs get-log-events \
+              --log-group-name "/ecs/${CLUSTER%-cluster}/api" \
+              --log-stream-name "ecs/api/$TASK_ID" \
+              --region "$AWS_REGION" \
+              --output text --query 'events[*].message' 2>/dev/null || true
+            exit 1
+          fi
+          echo "Migrations applied successfully."
+
+      - name: Deploy services to ECS (roll onto latest task definition)
+        # terraform apply registers new task-def revisions but the services use
+        # ignore_changes=[task_definition], so they must be repointed explicitly.
+        # Using the family name (no :revision suffix) resolves to the newest ACTIVE revision.
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          CLUSTER=$(terraform output -raw ecs_cluster_name)
+          PREFIX="${CLUSTER%-cluster}"
+          for SVC in api web worker; do
+            echo "Deploying $PREFIX-$SVC-svc ..."
+            aws ecs update-service \
+              --cluster "$CLUSTER" \
+              --service "$PREFIX-$SVC-svc" \
+              --task-definition "$PREFIX-$SVC" \
+              --force-new-deployment >/dev/null
+          done
+          for SVC in api web worker; do
+            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+          done
+          echo "All services rolled onto latest task definitions."
+
+  # ── Deploy prod (runs after staging succeeds, gated by required reviewer) ──
+  # Requires a human approval in the 'prod' GitHub Environment before
+  # Terraform applies. Configure the reviewer in:
+  #   GitHub → Settings → Environments → prod → Required reviewers.
   deploy-prod:
     if: github.event.pull_request.merged == true
     name: Deploy → production
-    needs: deploy-dev
+    needs: deploy-staging
     runs-on: ubuntu-latest
     environment: prod
     concurrency:
@@ -253,7 +364,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
 
       - name: Terraform Init
-        run: terraform init -input=false -backend-config="key=env/prod/terraform.tfstate"
+        run: terraform init -input=false -backend-config=envs/prod/backend-prod.hcl
 
       - name: Terraform Apply
         run: terraform apply -auto-approve -input=false -var-file=envs/prod/prod.tfvars
@@ -355,7 +466,7 @@ jobs:
   #         role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
   #         aws-region: ${{ vars.AWS_REGION }}
   #     - name: Terraform Init
-  #       run: terraform init -input=false -backend-config="key=env/${{ github.event.inputs.environment }}/terraform.tfstate"
+  #       run: terraform init -input=false -backend-config=envs/${{ github.event.inputs.environment }}/backend-${{ github.event.inputs.environment }}.hcl
   #     - name: Terraform Apply
   #       run: terraform apply -auto-approve -input=false -var-file=envs/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}.tfvars
   #     - name: Deploy services to ECS
