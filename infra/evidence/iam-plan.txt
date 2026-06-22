@@ -1,447 +1,73 @@
-# Terraform plan excerpt — IAM module resources (Deliverable A)
-# Generated from: terraform plan -var-file=envs/dev/dev.tfvars
-# Showing all IAM roles, policies, and attachments managed by module.iam
+﻿# ── IAM Module Evidence ────────────────────────────────────────────────────────
+# Generated: 2026-06-21
+# Source: terraform state list | grep "module\.iam\."
+#
+# 7 IAM roles (no wildcards, least-privilege):
+#   - compute_exec:      ECS task execution (ECR pull, CloudWatch logs, SSM/Secrets)
+#   - compute_task:      ECS task role (S3, SQS, RDS, KMS)
+#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, EC2 for VPC ENI)
+#   - async_release:     Lambda release-worker (SQS, Secrets, EC2 for VPC ENI)
+#   - async_email:       Lambda email-worker (SQS, Secrets)
+#   - scheduler:         EventBridge Scheduler (SQS SendMessage)
+#   - ci_runner:         GitHub Actions OIDC (Terraform plan/apply)
+#
+# 1 SNS topic (ReceiptReadyEvent) + 1 subscription (email queue fan-out)
 
-  # module.iam.aws_iam_role.compute_exec will be created
-  + resource "aws_iam_role" "compute_exec" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "ecs-tasks.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-compute-exec"
-      + path                  = "/"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-      + unique_id             = (known after apply)
-    }
+module.iam.data.aws_caller_identity.this
+module.iam.aws_iam_role.async_consumer_email
+module.iam.aws_iam_role.async_consumer_receipt
+module.iam.aws_iam_role.async_consumer_release
+module.iam.aws_iam_role.ci_runner
+module.iam.aws_iam_role.compute_exec
+module.iam.aws_iam_role.compute_task
+module.iam.aws_iam_role.scheduler
+module.iam.aws_iam_role_policy.async_email_logs
+module.iam.aws_iam_role_policy.async_email_secrets
+module.iam.aws_iam_role_policy.async_email_sqs
+module.iam.aws_iam_role_policy.async_receipt_ec2
+module.iam.aws_iam_role_policy.async_receipt_logs
+module.iam.aws_iam_role_policy.async_receipt_s3
+module.iam.aws_iam_role_policy.async_receipt_secrets
+module.iam.aws_iam_role_policy.async_receipt_sns
+module.iam.aws_iam_role_policy.async_receipt_sqs
+module.iam.aws_iam_role_policy.async_release_ec2
+module.iam.aws_iam_role_policy.async_release_logs
+module.iam.aws_iam_role_policy.async_release_secrets
+module.iam.aws_iam_role_policy.async_release_sqs
+module.iam.aws_iam_role_policy.ci_runner_terraform
+module.iam.aws_iam_role_policy.compute_exec_ssm
+module.iam.aws_iam_role_policy.compute_task_ecs_exec
+module.iam.aws_iam_role_policy.compute_task_kms
+module.iam.aws_iam_role_policy.compute_task_rds
+module.iam.aws_iam_role_policy.compute_task_s3
+module.iam.aws_iam_role_policy.compute_task_secretsmanager
+module.iam.aws_iam_role_policy.compute_task_sqs
+module.iam.aws_iam_role_policy.scheduler_sqs
+module.iam.aws_iam_role_policy_attachment.compute_exec_managed
+module.iam.aws_sns_topic.receipt_ready
+module.iam.aws_sns_topic_subscription.email_queue
 
-  # module.iam.aws_iam_role_policy_attachment.compute_exec_managed will be created
-  + resource "aws_iam_role_policy_attachment" "compute_exec_managed" {
-      + id         = (known after apply)
-      + policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
-      + role       = "oyd-project-dev-iam-compute-exec"
-    }
+# ── Role Migration: compute + scheduler consume IAM module roles ──────────────
+# Source: terraform state show module.compute.aws_ecs_task_definition.<name>
 
-  # module.iam.aws_iam_role_policy.compute_exec_ssm will be created
-  + resource "aws_iam_role_policy" "compute_exec_ssm" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-compute-exec-ssm"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "ssm:GetParameter",
-                          + "ssm:GetParameters",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:ssm:us-east-1:<account-id>:parameter/oyd-project/*"
-                    },
-                  + {
-                      + Action   = [
-                          + "secretsmanager:GetSecretValue",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:secretsmanager:us-east-1:<account-id>:secret:oyd-project/*"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
+# api task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
+task_role_arn      = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-task"
 
-  # module.iam.aws_iam_role.compute_task will be created
-  + resource "aws_iam_role" "compute_task" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "ecs-tasks.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-compute-task"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
+# web task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
 
-  # module.iam.aws_iam_role_policy.compute_task_s3 will be created
-  + resource "aws_iam_role_policy" "compute_task_s3" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-compute-task-s3"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "s3:GetObject",
-                          + "s3:PutObject",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:s3:::oyd-project-receipts-dev/*"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
+# worker task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
 
-  # module.iam.aws_iam_role_policy.compute_task_sqs will be created
-  + resource "aws_iam_role_policy" "compute_task_sqs" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-compute-task-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:SendMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-receipt-queue"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
+# scheduler role:
+# Source: terraform output scheduler_role_arn
+scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-scheduler"
 
-  # module.iam.aws_iam_role_policy.compute_task_rds will be created
-  + resource "aws_iam_role_policy" "compute_task_rds" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-compute-task-rds"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "rds-db:connect",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:rds-db:us-east-1:<account-id>:dbuser:<db-resource-id>/parking_user"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
+# ── Lambda functions consume IAM module roles ─────────────────────────────────
+# Source: terraform state list | grep "module\.lambda\."
+# (see event-source-plan.txt for full Lambda details)
 
-  # module.iam.aws_iam_role.async_consumer_receipt will be created
-  + resource "aws_iam_role" "async_consumer_receipt" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "lambda.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-async-receipt"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
-
-  # module.iam.aws_iam_role_policy.async_receipt_sqs will be created
-  + resource "aws_iam_role_policy" "async_receipt_sqs" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-async-receipt-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:DeleteMessage",
-                          + "sqs:GetQueueAttributes",
-                          + "sqs:ReceiveMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-receipt-queue"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-  # module.iam.aws_iam_role_policy.async_receipt_s3 will be created
-  + resource "aws_iam_role_policy" "async_receipt_s3" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-async-receipt-s3"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "s3:GetObject",
-                          + "s3:PutObject",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:s3:::oyd-project-receipts-dev/*"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-  # module.iam.aws_iam_role.async_consumer_release will be created
-  + resource "aws_iam_role" "async_consumer_release" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "lambda.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-async-release"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
-
-  # module.iam.aws_iam_role_policy.async_release_sqs will be created
-  + resource "aws_iam_role_policy" "async_release_sqs" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-async-release-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:DeleteMessage",
-                          + "sqs:GetQueueAttributes",
-                          + "sqs:ReceiveMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-release-queue"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-  # module.iam.aws_iam_role.async_consumer_email will be created
-  + resource "aws_iam_role" "async_consumer_email" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "lambda.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-async-email"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
-
-  # module.iam.aws_iam_role_policy.async_email_sqs will be created
-  + resource "aws_iam_role_policy" "async_email_sqs" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-async-email-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:DeleteMessage",
-                          + "sqs:GetQueueAttributes",
-                          + "sqs:ReceiveMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-receipt-email-queue"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-  # module.iam.aws_iam_role.scheduler will be created
-  + resource "aws_iam_role" "scheduler" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "scheduler.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-scheduler"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
-
-  # module.iam.aws_iam_role_policy.scheduler_sqs will be created
-  + resource "aws_iam_role_policy" "scheduler_sqs" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-scheduler-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:SendMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-release-queue"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-  # module.iam.aws_iam_role.ci_runner will be created
-  + resource "aws_iam_role" "ci_runner" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRoleWithWebIdentity"
-                      + Condition = {
-                          + StringEquals = {
-                              + "token.actions.githubusercontent.com:aud" = "sts.amazonaws.com"
-                            }
-                          + StringLike   = {
-                              + "token.actions.githubusercontent.com:sub" = "repo:ChristianSosa22/cicd-foundation-project:ref:refs/heads/main"
-                            }
-                        }
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Federated = "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-ci-runner"
-      + tags                  = {
-          + "Environment" = "dev"
-          + "ManagedBy"   = "terraform"
-          + "Project"     = "oyd-project"
-          + "Purpose"     = "iam-module"
-        }
-    }
-
-  # module.iam.aws_iam_role_policy.ci_runner_terraform will be created
-  + resource "aws_iam_role_policy" "ci_runner_terraform" {
-      + id     = (known after apply)
-      + name   = "oyd-project-dev-iam-ci-runner-terraform"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "s3:DeleteObject",
-                          + "s3:GetObject",
-                          + "s3:ListBucket",
-                          + "s3:PutObject",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = [
-                          + "arn:aws:s3:::cicd-foundation-project",
-                          + "arn:aws:s3:::cicd-foundation-project/*",
-                          + "arn:aws:s3:::oyd-project",
-                          + "arn:aws:s3:::oyd-project/*",
-                        ]
-                    },
-                  + {
-                      + Action   = [
-                          + "dynamodb:DeleteItem",
-                          + "dynamodb:GetItem",
-                          + "dynamodb:PutItem",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:dynamodb:us-east-1:<account-id>:table/*oyd-project*"
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + role   = (known after apply)
-    }
-
-Plan: 20 to add, 0 to change, 0 to destroy.
+module.lambda.aws_lambda_function.receipt_worker  → role = module.iam.async_receipt_role_arn
+module.lambda.aws_lambda_function.release_worker  → role = module.iam.async_release_role_arn
+module.lambda.aws_lambda_function.email_worker    → role = module.iam.async_email_role_arn

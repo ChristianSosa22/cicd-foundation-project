@@ -233,16 +233,15 @@ resource "aws_iam_role_policy" "async_receipt_s3" {
 }
 
 resource "aws_iam_role_policy" "async_receipt_sns" {
-  count = var.sns_topic_arn != "" ? 1 : 0
-  name  = "${local.prefix}-iam-async-receipt-sns"
-  role  = aws_iam_role.async_consumer_receipt.id
+  name = "${local.prefix}-iam-async-receipt-sns"
+  role = aws_iam_role.async_consumer_receipt.id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
       Action   = ["sns:Publish"]
-      Resource = var.sns_topic_arn
+      Resource = aws_sns_topic.receipt_ready.arn
     }]
   })
 }
@@ -271,6 +270,24 @@ resource "aws_iam_role_policy" "async_receipt_logs" {
       Effect   = "Allow"
       Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
       Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.this.account_id}:log-group:/aws/lambda/${local.prefix}*:*:*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "async_receipt_ec2" {
+  name = "${local.prefix}-iam-async-receipt-ec2"
+  role = aws_iam_role.async_consumer_receipt.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = [
+        "ec2:CreateNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface"
+      ]
+      Resource = "*"
     }]
   })
 }
@@ -339,6 +356,24 @@ resource "aws_iam_role_policy" "async_release_logs" {
       Effect   = "Allow"
       Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
       Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.this.account_id}:log-group:/aws/lambda/${local.prefix}*:*:*"
+    }]
+  })
+}
+
+resource "aws_iam_role_policy" "async_release_ec2" {
+  name = "${local.prefix}-iam-async-release-ec2"
+  role = aws_iam_role.async_consumer_release.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = [
+        "ec2:CreateNetworkInterface",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DeleteNetworkInterface"
+      ]
+      Resource = "*"
     }]
   })
 }
@@ -575,6 +610,25 @@ resource "aws_iam_role_policy" "ci_runner_terraform" {
       }
     ]
   })
+}
+
+# ── SNS Topic: ReceiptReadyEvent ───────────────────────────────────────────────
+# receipt-worker publishes ReceiptReadyEvent here; SNS fans out to email-queue.
+# Created inside IAM module so async_receipt_sns policy can reference it at plan time.
+resource "aws_sns_topic" "receipt_ready" {
+  name = "${local.prefix}-receipt-ready"
+
+  tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_sns_topic_subscription" "email_queue" {
+  topic_arn = aws_sns_topic.receipt_ready.arn
+  protocol  = "sqs"
+  endpoint  = var.email_queue_arn
 }
 
 # ── Data Sources ──────────────────────────────────────────────────────────────
