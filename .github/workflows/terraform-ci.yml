@@ -186,13 +186,18 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # The PR's head SHA matches BOTH the PR-validation run (which uploaded
+          # tfplan-dev) and THIS merge/close run (which did not). Exclude the
+          # current run id and require a successful conclusion so we land on the
+          # validation run that actually holds the artifact.
           RUN_ID=$(gh run list \
             --workflow terraform-ci.yml \
+            --event pull_request \
             --limit 100 \
-            --json databaseId,headSha \
-            --jq "[.[] | select(.headSha==\"${{ github.event.pull_request.head.sha }}\")][0].databaseId")
+            --json databaseId,headSha,conclusion \
+            --jq "[.[] | select(.headSha==\"${{ github.event.pull_request.head.sha }}\" and (.databaseId|tostring) != \"${{ github.run_id }}\" and .conclusion==\"success\")][0].databaseId")
           if [ -z "$RUN_ID" ] || [ "$RUN_ID" = "null" ]; then
-            echo "::error::No plan run found for head SHA ${{ github.event.pull_request.head.sha }}"
+            echo "::error::No successful PR plan run with a tfplan-dev artifact found for head SHA ${{ github.event.pull_request.head.sha }}"
             exit 1
           fi
           echo "Found plan run $RUN_ID"
