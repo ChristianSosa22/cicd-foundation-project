@@ -99,13 +99,21 @@ detección de drift); `gha-deploy-prod`, exclusivamente desde el Environment `pr
 `role-to-assume`, lo que emite credenciales temporales de 1 hora sin ninguna clave
 almacenada en GitHub Secrets.
 
-**GitHub Environments y ruleset de rama.** Se configuraron dos GitHub Environments:
-`dev` (sin gate de aprobación) y `prod` (revisor requerido — el merge a producción
-queda bloqueado hasta que un humano apruebe el deployment). El ruleset sobre `main`
-impone que todo cambio llegue vía Pull Request con al menos 1 aprobación y con el
-check `Terraform Plan (dev)` en verde, y bloquea force-push y eliminación de la rama.
-Esto cierra el ciclo: no es posible modificar la infraestructura sin revisión de código
-ni sin un plan aprobado.
+**Ruleset de rama sobre `main`.** El ruleset (`infra/docs/main-ruleset.json`, aplicado
+con `gh api repos/<org>/<repo>/rulesets -X POST`) está en modo **Active** y exige: (1)
+**Pull Request** antes de mergear (con ≥1 aprobación) — los pushes directos a `main` se
+rechazan; (2) **tres required status checks** que el workflow de PR expone como jobs
+independientes con nombres exactos — **`terraform fmt`**, **`terraform validate`** y
+**`terraform plan`** — de modo que un PR con cualquiera fallando o pendiente no puede
+mergearse; (3) **branches up to date** (`strict_required_status_checks_policy: true`): un
+PR atrasado respecto a `main` debe actualizarse y re-correr sus checks antes de habilitar
+el merge; (4) **block force pushes** (`non_fast_forward`) para todos, incluidos admins; y
+(5) **block deletions** (`deletion`) de la rama. El `bypass_actors` está vacío: nadie
+saltea el ruleset por el flujo normal (un break-glass de repo-admin sería aceptable pero
+no es la vía de merge habitual). Los tres checks son jobs separados —y no steps— porque
+GitHub reporta el status a nivel de job; el nombre en el ruleset debe coincidir
+exactamente con el `name:` del job o el check nunca reporta y la regla se daría por
+satisfecha en silencio.
 
 **Pipeline de cuatro fases (plan → deploy-dev → deploy-staging → deploy-prod).** El
 workflow `.github/workflows/terraform-ci.yml` reemplaza el job único anterior por jobs
@@ -141,6 +149,22 @@ job no puede acceder al secreto de otro entorno. El rol IAM de cada entorno se c
 `environment:staging`) y su ARN se publica como output del bootstrap
 (`gha_deploy_staging_role_arn`) para copiarlo en la variable `AWS_DEPLOY_ROLE_ARN` del
 Environment correspondiente.
+
+**Plan-artifact promotion (aplicar exactamente lo revisado).** El apply nunca usa
+`-auto-approve` ni re-planifica: aplica un plan guardado. En el path de dev el job `plan`
+(que corre en el PR y es el required check) genera `terraform plan -out=tfplan`, sube
+`tfplan` como artifact (`actions/upload-artifact`, nombre `tfplan-dev`) y publica el diff
+legible como comentario en el PR. Al mergear, `deploy-dev` localiza el run del `plan` por
+el `head SHA` del PR (`gh run list`), descarga ese **mismo** `tfplan`
+(`actions/download-artifact` con `run-id` — por eso el job declara `permissions: actions:
+read`) y ejecuta `terraform apply tfplan`. Como el plan se aplica verbatim, si el state
+cambió entre el plan del PR y el merge Terraform falla con *"saved plan is stale"* — la
+protección exacta que exige el requisito frente a re-planificar contra un state distinto.
+Para staging y prod —que aplican sobre state y `var-file` propios, donde un `tfplan` de
+dev no es válido— cada deploy job genera su `plan -out=tfplan` y hace `apply tfplan`
+dentro del mismo job (mismo state, sin ventana de drift), subiendo además el `tfplan` como
+artifact (`tfplan-staging` / `tfplan-prod`) para auditoría. Ningún apply del pipeline usa
+`-auto-approve`.
 
 **Detección de drift.** El workflow `.github/workflows/drift-detection.yml` corre
 diariamente a las 06:00 UTC (y bajo `workflow_dispatch`) sobre ambos entornos en

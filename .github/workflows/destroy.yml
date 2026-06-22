@@ -1,14 +1,15 @@
 name: Terraform Destroy (Gated)
 
-# Manual-only workflow to destroy an environment's infrastructure.
-# Destroying 'prod' is double-gated:
+# Manual-only workflow (workflow_dispatch) to destroy an environment's
+# infrastructure. Select the target environment (dev / staging / prod) from the
+# dropdown. Destroys are double-gated:
 #   1. The 'confirm' input must exactly match the environment name.
-#   2. The 'prod' GitHub Environment requires a human reviewer approval
-#      before any steps run (configure in Settings → Environments → prod).
+#   2. The selected GitHub Environment's reviewer gate (staging / prod) requires
+#      a human approval before any steps run (Settings → Environments → <env>).
 #
-# NOTE: Destroying prod will fail until you manually disable deletion
-# protection on RDS (deletion_protection = true in prod.tfvars). This is
-# intentional — it prevents accidental data loss.
+# NOTE: Destroying staging or prod will fail until you manually disable deletion
+# protection on RDS (deletion_protection = true in staging.tfvars / prod.tfvars).
+# This is intentional — it prevents accidental data loss.
 on:
   workflow_dispatch:
     inputs:
@@ -18,9 +19,10 @@ on:
         type: choice
         options:
           - dev
+          - staging
           - prod
       confirm:
-        description: "Type the environment name exactly to confirm (dev or prod)"
+        description: "Type the environment name exactly to confirm (dev, staging or prod)"
         required: true
         type: string
 
@@ -72,19 +74,16 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Resolve backend and var-file paths
-        id: paths
-        run: |
-          if [ "${{ inputs.environment }}" = "prod" ]; then
-            echo "backend_config=envs/prod/backend-prod.hcl" >> "$GITHUB_OUTPUT"
-            echo "tfvars=envs/prod/prod.tfvars"              >> "$GITHUB_OUTPUT"
-          else
-            echo "backend_config=envs/dev/backend-dev.hcl" >> "$GITHUB_OUTPUT"
-            echo "tfvars=envs/dev/dev.tfvars"              >> "$GITHUB_OUTPUT"
-          fi
-
+      # Backend and var-file are derived directly from the selected environment,
+      # so dev / staging / prod each resolve to their own state and values.
+      # Paths are relative to the ./infra working directory (i.e. infra/envs/<env>/...).
       - name: Terraform Init
-        run: terraform init -input=false -backend-config=${{ steps.paths.outputs.backend_config }}
+        run: terraform init -input=false -backend-config=envs/${{ inputs.environment }}/backend-${{ inputs.environment }}.hcl
+
+      # Confirmation print before the destructive step (visible in the run log
+      # and in the dry-run evidence).
+      - name: Confirm destroy target
+        run: 'echo "Destroying: ${{ inputs.environment }}"'
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -input=false -var-file=${{ steps.paths.outputs.tfvars }}
+        run: terraform destroy -auto-approve -input=false -var-file=envs/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
