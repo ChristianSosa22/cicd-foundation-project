@@ -1,17 +1,71 @@
-=== Delivery 4 — Deliverable B: Event-Driven Compute (worker, VPC track) ===
-=== terraform plan excerpt — async worker resources consuming module.async_receipt outputs ===
+﻿# ── Event-Driven Compute: Lambda + Event Source Mappings ──────────────────────
+# Generated: 2026-06-21
+# Source: terraform state show module.lambda.*
+#
+# 3 Lambda functions (SQS → Lambda via event source mappings):
+#   1. receipt-worker:  receipt-queue  → S3 receipt object
+#   2. release-worker:  release-queue  → DB update (expired reservations)
+#   3. email-worker:    email-queue    → email notification (SNS fan-out)
+#
+# All roles sourced from IAM module (no inline IAM, no hardcoded ARNs).
 
-[1m  # module.compute.aws_cloudwatch_log_group.worker[0m will be created
-[1m  # module.compute.aws_ecs_service.worker[0m will be created
-[1m  # module.compute.aws_ecs_task_definition.worker[0m will be created
-[1m  # module.compute.aws_iam_role.worker_task[0m will be created
-[1m  # module.compute.aws_iam_role_policy.worker_s3[0m will be created
-[1m  # module.compute.aws_iam_role_policy.worker_sqs[0m will be created
+# ── Lambda Resources (terraform state list) ───────────────────────────────────
 
---- IAM scoping (no wildcards) ---
-SQS policy Resource:  arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-queue
-S3  policy Resource:  arn:aws:s3:::oyd-project-receipts-dev/*
+module.lambda.data.archive_file.email
+module.lambda.data.archive_file.receipt
+module.lambda.data.archive_file.release
+module.lambda.aws_cloudwatch_log_group.email_worker
+module.lambda.aws_cloudwatch_log_group.receipt_worker
+module.lambda.aws_cloudwatch_log_group.release_worker
+module.lambda.aws_lambda_event_source_mapping.email
+module.lambda.aws_lambda_event_source_mapping.receipt
+module.lambda.aws_lambda_event_source_mapping.release
+module.lambda.aws_lambda_function.email_worker
+module.lambda.aws_lambda_function.receipt_worker
+module.lambda.aws_lambda_function.release_worker
 
-Plan summary:
-Plan: 6 to add, 1 to change, 0 to destroy.
+# ── Event Source Mapping: receipt-worker ──────────────────────────────────────
+# Source: terraform state show module.lambda.aws_lambda_event_source_mapping.receipt
 
+resource "aws_lambda_event_source_mapping" "receipt" {
+    batch_size                         = 10
+    enabled                            = true
+    event_source_arn                   = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-queue"
+    function_arn                       = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-receipt-worker"
+    function_response_types            = ["ReportBatchItemFailures"]
+    maximum_batching_window_in_seconds = 0
+    state                              = "Enabled"
+}
+
+# ── Event Source Mapping: release-worker ──────────────────────────────────────
+# Source: terraform state show module.lambda.aws_lambda_event_source_mapping.release
+
+resource "aws_lambda_event_source_mapping" "release" {
+    batch_size                         = 10
+    enabled                            = true
+    event_source_arn                   = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-release-queue"
+    function_arn                       = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-release-worker"
+    function_response_types            = ["ReportBatchItemFailures"]
+    maximum_batching_window_in_seconds = 0
+    state                              = "Enabled"
+}
+
+# ── Event Source Mapping: email-worker ────────────────────────────────────────
+# Source: terraform state show module.lambda.aws_lambda_event_source_mapping.email
+
+resource "aws_lambda_event_source_mapping" "email" {
+    batch_size                         = 10
+    enabled                            = true
+    event_source_arn                   = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-email-queue"
+    function_arn                       = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-email-worker"
+    function_response_types            = ["ReportBatchItemFailures"]
+    maximum_batching_window_in_seconds = 0
+    state                              = "Enabled"
+}
+
+# ── IAM scoping (no wildcards) ────────────────────────────────────────────────
+# receipt-worker: sqs:Receive/Delete/Get on receipt-queue, s3:PutObject on receipts bucket,
+#                 sns:Publish on receipt-ready topic, ec2:Create/Delete/DescribeNetworkInterface
+# release-worker: sqs:Receive/Delete/Get on release-queue, secretsmanager:GetSecretValue,
+#                 ec2:Create/Delete/DescribeNetworkInterface
+# email-worker:   sqs:Receive/Delete/Get on email-queue, secretsmanager:GetSecretValue

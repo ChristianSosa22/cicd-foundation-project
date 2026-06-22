@@ -342,17 +342,20 @@ que dispara `ReleaseExpiredReservationCommand` cada 20 minutos hacia la `release
 #### Terraform plan — event-source-plan.txt
 
 El archivo [`evidence/event-source-plan.txt`](evidence/event-source-plan.txt) muestra el
-`terraform plan` con los recursos del worker de ECS Fargate y su conexión al módulo async:
-el `RECEIPT_QUEUE_URL` de SQS se inyecta como variable de entorno en el task definition
-del worker, implementando el VPC track de cómputo asíncrono.
+`terraform state` con los recursos del módulo Lambda y sus event source mappings:
+3 funciones Lambda (`receipt-worker`, `release-worker`, `email-worker`) conectadas a las
+colas SQS del módulo async mediante event source mappings, reemplazando al worker de ECS Fargate.
 
-#### ECS Worker — variable de entorno RECEIPT_QUEUE_URL
+#### Lambda Event Source Mappings — SQS → Lambda triggers
 
-![Variable RECEIPT_QUEUE_URL configurada en el task definition del worker de ECS](evidence/event-source.png)
+![Event source mappings de SQS → Lambda configurados en las funciones Lambda](evidence/event-source.png)
 
-> Capturado desde **AWS Console → ECS → Task Definitions → oyd-project-dev-worker**,
-> mostrando `RECEIPT_QUEUE_URL` apuntando a la SQS queue de recibos — el trigger
-> que conecta el módulo async al servicio de cómputo.
+> Capturado desde **AWS Console → Lambda → Functions → oyd-project-dev-receipt-worker → Configuration → Triggers**,
+> mostrando el trigger de SQS (`oyd-project-dev-receipt-queue`) conectado a la función Lambda receipt-worker.
+> Repetir para cada una de las 3 funciones Lambda:
+> - `oyd-project-dev-receipt-worker` ← `oyd-project-dev-receipt-queue`
+> - `oyd-project-dev-release-worker` ← `oyd-project-dev-release-queue`
+> - `oyd-project-dev-email-worker` ← `oyd-project-dev-receipt-email-queue`
 
 ### End-to-End Async Proof
 
@@ -401,104 +404,80 @@ A continuación se detalla el plan de ejecución enfocado exclusivamente en el m
 <summary><b>Haz clic aquí para expandir el extracto del terraform plan (IAM)</b></summary>
 
 ```text
-  # module.iam.aws_iam_role.compute_task will be created
-  + resource "aws_iam_role" "compute_task" {
-      + arn                   = (known after apply)
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "ecs-tasks.amazonaws.com"
-                        }
-                    },
-                ]
-              + Version   = "2012-10-17"
-            }
-        )
-      + name                  = "oyd-project-dev-iam-compute-task"
-    }
+ # ── IAM Module Evidence ────────────────────────────────────────────────────────
+# Generated: 2026-06-21
+# Source: terraform state list | grep "module\.iam\."
+#
+# 7 IAM roles (no wildcards, least-privilege):
+#   - compute_exec:      ECS task execution (ECR pull, CloudWatch logs, SSM/Secrets)
+#   - compute_task:      ECS task role (S3, SQS, RDS, KMS)
+#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, EC2 for VPC ENI)
+#   - async_release:     Lambda release-worker (SQS, Secrets, EC2 for VPC ENI)
+#   - async_email:       Lambda email-worker (SQS, Secrets)
+#   - scheduler:         EventBridge Scheduler (SQS SendMessage)
+#   - ci_runner:         GitHub Actions OIDC (Terraform plan/apply)
+#
+# 1 SNS topic (ReceiptReadyEvent) + 1 subscription (email queue fan-out)
 
-  # module.iam.aws_iam_role_policy.compute_task_s3 will be created
-  + resource "aws_iam_role_policy" "compute_task_s3" {
-      + name   = "oyd-project-dev-iam-compute-task-s3"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "s3:GetObject",
-                          + "s3:PutObject",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:s3:::oyd-project-receipts-dev/*"
-                    },
-                ]
-            }
-        )
-    }
+module.iam.data.aws_caller_identity.this
+module.iam.aws_iam_role.async_consumer_email
+module.iam.aws_iam_role.async_consumer_receipt
+module.iam.aws_iam_role.async_consumer_release
+module.iam.aws_iam_role.ci_runner
+module.iam.aws_iam_role.compute_exec
+module.iam.aws_iam_role.compute_task
+module.iam.aws_iam_role.scheduler
+module.iam.aws_iam_role_policy.async_email_logs
+module.iam.aws_iam_role_policy.async_email_secrets
+module.iam.aws_iam_role_policy.async_email_sqs
+module.iam.aws_iam_role_policy.async_receipt_ec2
+module.iam.aws_iam_role_policy.async_receipt_logs
+module.iam.aws_iam_role_policy.async_receipt_s3
+module.iam.aws_iam_role_policy.async_receipt_secrets
+module.iam.aws_iam_role_policy.async_receipt_sns
+module.iam.aws_iam_role_policy.async_receipt_sqs
+module.iam.aws_iam_role_policy.async_release_ec2
+module.iam.aws_iam_role_policy.async_release_logs
+module.iam.aws_iam_role_policy.async_release_secrets
+module.iam.aws_iam_role_policy.async_release_sqs
+module.iam.aws_iam_role_policy.ci_runner_terraform
+module.iam.aws_iam_role_policy.compute_exec_ssm
+module.iam.aws_iam_role_policy.compute_task_ecs_exec
+module.iam.aws_iam_role_policy.compute_task_kms
+module.iam.aws_iam_role_policy.compute_task_rds
+module.iam.aws_iam_role_policy.compute_task_s3
+module.iam.aws_iam_role_policy.compute_task_secretsmanager
+module.iam.aws_iam_role_policy.compute_task_sqs
+module.iam.aws_iam_role_policy.scheduler_sqs
+module.iam.aws_iam_role_policy_attachment.compute_exec_managed
+module.iam.aws_sns_topic.receipt_ready
+module.iam.aws_sns_topic_subscription.email_queue
 
-  # module.iam.aws_iam_role.scheduler will be created
-  + resource "aws_iam_role" "scheduler" {
-      + name                  = "oyd-project-dev-iam-scheduler"
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRole"
-                      + Effect    = "Allow"
-                      + Principal = {
-                          + Service = "scheduler.amazonaws.com"
-                        }
-                    },
-                ]
-            }
-        )
-    }
+# ── Role Migration: compute + scheduler consume IAM module roles ──────────────
+# Source: terraform state show module.compute.aws_ecs_task_definition.<name>
 
-  # module.iam.aws_iam_role_policy.scheduler_sqs will be created
-  + resource "aws_iam_role_policy" "scheduler_sqs" {
-      + name   = "oyd-project-dev-iam-scheduler-sqs"
-      + policy = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action   = [
-                          + "sqs:SendMessage",
-                        ]
-                      + Effect   = "Allow"
-                      + Resource = "arn:aws:sqs:us-east-1:<account-id>:oyd-project-dev-release-queue"
-                    },
-                ]
-            }
-        )
-    }
+# api task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
+task_role_arn      = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-task"
 
-  # module.iam.aws_iam_role.ci_runner will be created
-  + resource "aws_iam_role" "ci_runner" {
-      + name                  = "oyd-project-dev-iam-ci-runner"
-      + assume_role_policy    = jsonencode(
-            {
-              + Statement = [
-                  + {
-                      + Action    = "sts:AssumeRoleWithWebIdentity"
-                      + Condition = {
-                          + StringLike = {
-                              + "token.actions.githubusercontent.com:sub" = "repo:ChristianSosa22/cicd-foundation-project:ref:refs/heads/main"
-                            }
-                        }
-                      + Principal = {
-                          + Federated = "arn:aws:iam::<account-id>:oidc-provider/token.actions.githubusercontent.com"
-                        }
-                    },
-                ]
-            }
-        )
-    }
+# web task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
 
-Plan: 20 to add, 0 to change, 0 to destroy.
+# worker task definition:
+execution_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
+
+# scheduler role:
+# Source: terraform output scheduler_role_arn
+scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-scheduler"
+
+# ── Lambda functions consume IAM module roles ─────────────────────────────────
+# Source: terraform state list | grep "module\.lambda\."
+# (see event-source-plan.txt for full Lambda details)
+
+module.lambda.aws_lambda_function.receipt_worker  → role = module.iam.async_receipt_role_arn
+module.lambda.aws_lambda_function.release_worker  → role = module.iam.async_release_role_arn
+module.lambda.aws_lambda_function.email_worker    → role = module.iam.async_email_role_arn
+
 ```
 
 El plan completo con los 7 roles y sus políticas se encuentra en [`evidence/iam-plan.txt`](evidence/iam-plan.txt).

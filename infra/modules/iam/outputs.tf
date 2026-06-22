@@ -74,3 +74,10 @@ output "ci_runner_role_name" {
   description = "Name of the GitHub Actions CI runner role."
   value       = aws_iam_role.ci_runner.name
 }
+
+# ── SNS Topic ────────────────────────────────────────────────────────────────
+
+output "sns_topic_arn" {
+  description = "ARN of the ReceiptReadyEvent SNS topic. receipt-worker publishes here; email queue subscribes."
+  value       = aws_sns_topic.receipt_ready.arn
+}

@@ -129,6 +129,13 @@ module "async_email" {
   dlq_message_retention_seconds = var.dlq_message_retention_seconds
 }
 
+# ── SNS Topic: ReceiptReadyEvent (fan-out to email queue) ────────────────────
+# Created inline in root module to break circular dependency between module.iam
+# (needs sns_topic_arn) and module.lambda (needs role ARNs from module.iam).
+# receipt-worker publishes ReceiptReadyEvent here; SNS fans out to email-queue.
+# resource "aws_sns_topic" "receipt_ready" { ... }      ← MOVED to module.iam
+# resource "aws_sns_topic_subscription" "email_queue" { ... } ← MOVED to module.iam
+
 module "scheduler" {
   source = "./modules/scheduler"
 
@@ -205,11 +212,41 @@ module "iam" {
   receipt_queue_arn      = module.async_receipt.queue_arn
   release_queue_arn      = module.async_release.queue_arn
   email_queue_arn        = module.async_email.queue_arn
-  sns_topic_arn          = ""
   kms_key_arn            = module.kms.key_arn
   db_password_secret_arn = module.secrets.db_password_secret_arn
   github_repo            = var.github_repo
   oidc_provider_arn      = ""
+}
+
+module "lambda" {
+  source = "./modules/lambda"
+
+  project_name = var.project_name
+  environment  = var.environment
+
+  # IAM roles from the centralized IAM module
+  receipt_role_arn = module.iam.async_receipt_role_arn
+  release_role_arn = module.iam.async_release_role_arn
+  email_role_arn   = module.iam.async_email_role_arn
+
+  # SQS queues from async module
+  receipt_queue_arn = module.async_receipt.queue_arn
+  release_queue_arn = module.async_release.queue_arn
+  email_queue_arn   = module.async_email.queue_arn
+
+  # S3 bucket from storage module
+  receipts_bucket_arn  = module.storage.bucket_arn
+  receipts_bucket_name = module.storage.bucket_name
+
+  # VPC config for receipt-worker and release-worker
+  subnet_ids        = module.network.private_app_subnet_ids
+  security_group_id = module.security.app_security_group_id
+
+  # Event source mapping config
+  batch_size              = var.lambda_batch_size
+  maximum_batching_window = var.lambda_maximum_batching_window
+
+  depends_on = [module.network, module.security, module.iam, module.async_receipt, module.async_release, module.async_email]
 }
 
 module "observability" {
