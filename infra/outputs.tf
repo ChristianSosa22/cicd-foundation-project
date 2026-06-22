@@ -316,3 +316,40 @@ output "observability_budget_name" {
   description = "Name of the AWS Budget. Verify it at https://console.aws.amazon.com/billing/home#/budgets."
   value       = module.observability.budget_name
 }
+
+# ── Lambda Module ─────────────────────────────────────────────────────────────
+
+output "lambda_receipt_worker_arn" {
+  description = "ARN of the receipt-worker Lambda function."
+  value       = module.lambda.receipt_worker_arn
+}
+
+output "lambda_receipt_worker_name" {
+  description = "Name of the receipt-worker Lambda function."
+  value       = module.lambda.receipt_worker_name
+}
+
+output "lambda_release_worker_arn" {
+  description = "ARN of the release-worker Lambda function."
+  value       = module.lambda.release_worker_arn
+}
+
+output "lambda_release_worker_name" {
+  description = "Name of the release-worker Lambda function."
+  value       = module.lambda.release_worker_name
+}
+
+output "lambda_email_worker_arn" {
+  description = "ARN of the email-worker Lambda function."
+  value       = module.lambda.email_worker_arn
+}
+
+output "lambda_email_worker_name" {
+  description = "Name of the email-worker Lambda function."
+  value       = module.lambda.email_worker_name
+}
+
+output "sns_receipt_ready_topic_arn" {
+  description = "ARN of the SNS topic for ReceiptReadyEvent. receipt-worker publishes here; email queue subscribes."
+  value       = module.iam.sns_topic_arn
+}

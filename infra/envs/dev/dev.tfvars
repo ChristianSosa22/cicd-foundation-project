@@ -37,6 +37,11 @@ api_memory    = 512
 web_cpu       = 256
 web_memory    = 512
 
+# ── Async Worker (ECS Fargate — paused, Delivery 4 proof) ────────────────────
+# The ECS worker was created for Deliverable E end-to-end async proof.
+# Now paused (desired_count=0) because Lambda receipt-worker is the active consumer.
+worker_desired_count = 0
+
 # ── Async Messaging ───────────────────────────────────────────────────────────
 # Dev uses shorter retention to reduce SQS storage costs; messages older than
 # 4 days are discarded. max_receive_count=3 absorbs transient failures.
@@ -70,3 +75,7 @@ domain_name      = "app.grupo5.oyd.solid.com.gt"
 hosted_zone_name = "grupo5.oyd.solid.com.gt"
 app_fqdn         = "app.grupo5.oyd.solid.com.gt"
 ssl_policy       = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+
+# ── Lambda Module ─────────────────────────────────────────────────────────────
+lambda_batch_size              = 10
+lambda_maximum_batching_window = 0

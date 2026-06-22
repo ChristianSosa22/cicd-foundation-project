@@ -40,14 +40,8 @@ variable "release_queue_arn" {
 }
 
 variable "email_queue_arn" {
-  description = "ARN of the email SQS queue. Granted to email consumer role (Receive/Delete/GetAttributes)."
+  description = "ARN of the email SQS queue. Granted to email consumer role (Receive/Delete/GetAttributes). Also used for SNS→SQS subscription."
   type        = string
-}
-
-variable "sns_topic_arn" {
-  description = "ARN of the SNS topic (receipt-ready-topic). Granted to receipt consumer role for sns:Publish."
-  type        = string
-  default     = ""
 }
 
 variable "kms_key_arn" {

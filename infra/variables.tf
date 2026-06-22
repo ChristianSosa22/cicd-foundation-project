@@ -336,3 +336,17 @@ variable "ssl_policy" {
   type        = string
   default     = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 }
+
+# ── Lambda module ─────────────────────────────────────────────────────────────
+
+variable "lambda_batch_size" {
+  description = "Maximum number of SQS messages delivered per Lambda invocation via event source mapping. Range 1-10 for SQS."
+  type        = number
+  default     = 10
+}
+
+variable "lambda_maximum_batching_window" {
+  description = "Maximum time in seconds to gather messages before invoking Lambda. 0 = process immediately."
+  type        = number
+  default     = 0
+}
