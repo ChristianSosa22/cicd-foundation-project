@@ -1,0 +1,503 @@
+﻿module.network.data.aws_availability_zones.available: Reading...
+module.kms.data.aws_caller_identity.current: Reading...
+module.network.aws_vpc.this: Refreshing state... [id=vpc-013a3f24358015fd7]
+module.iam.data.aws_caller_identity.this: Reading...
+module.ecr.aws_ecr_repository.api: Refreshing state... [id=oyd-project-api]
+module.network.data.aws_region.current: Reading...
+module.iam.aws_iam_role.scheduler: Refreshing state... [id=oyd-project-dev-iam-scheduler]
+module.kms.data.aws_region.current: Reading...
+module.network.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.kms.data.aws_region.current: Read complete after 0s [id=us-east-1]
+module.iam.aws_iam_role.compute_task: Refreshing state... [id=oyd-project-dev-iam-compute-task]
+module.iam.aws_iam_role.async_consumer_receipt: Refreshing state... [id=oyd-project-dev-iam-async-receipt]
+module.iam.aws_iam_role.compute_exec: Refreshing state... [id=oyd-project-dev-iam-compute-exec]
+module.async_receipt.aws_sqs_queue.dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-dlq]
+module.iam.data.aws_caller_identity.this: Read complete after 0s [id=733202870569]
+module.iam.aws_iam_role.async_consumer_email: Refreshing state... [id=oyd-project-dev-iam-async-email]
+module.kms.data.aws_caller_identity.current: Read complete after 0s [id=733202870569]
+module.iam.aws_sns_topic.receipt_ready: Refreshing state... [id=arn:aws:sns:us-east-1:733202870569:oyd-project-dev-receipt-ready]
+module.network.data.aws_availability_zones.available: Read complete after 0s [id=us-east-1]
+module.iam.aws_iam_role.async_consumer_release: Refreshing state... [id=oyd-project-dev-iam-async-release]
+module.async_email.aws_sqs_queue.dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-dlq]
+module.async_release.aws_sqs_queue.dlq: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-dlq]
+module.ecr.aws_ecr_repository.web: Refreshing state... [id=oyd-project-web]
+module.iam.aws_iam_role.ci_runner: Refreshing state... [id=oyd-project-dev-iam-ci-runner]
+module.async_receipt.aws_sqs_queue.main: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-queue]
+module.ecr.aws_ecr_lifecycle_policy.api: Refreshing state... [id=oyd-project-api]
+module.iam.aws_iam_role_policy.compute_exec_ssm: Refreshing state... [id=oyd-project-dev-iam-compute-exec:oyd-project-dev-iam-compute-exec-ssm]
+module.iam.aws_iam_role_policy_attachment.compute_exec_managed: Refreshing state... [id=oyd-project-dev-iam-compute-exec-20260620194534326600000002]
+module.async_email.aws_sqs_queue.main: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-queue]
+module.async_release.aws_sqs_queue.main: Refreshing state... [id=https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-queue]
+module.ecr.aws_ecr_lifecycle_policy.web: Refreshing state... [id=oyd-project-web]
+module.kms.aws_kms_key.main: Refreshing state... [id=1ce62788-3bbe-4749-8b46-80142c02086c]
+module.iam.aws_sns_topic_subscription.email_queue: Refreshing state... [id=arn:aws:sns:us-east-1:733202870569:oyd-project-dev-receipt-ready:7195fa3c-492b-4edd-a2d2-885e380c0ece]
+module.iam.aws_iam_role_policy.scheduler_sqs: Refreshing state... [id=oyd-project-dev-iam-scheduler:oyd-project-dev-iam-scheduler-sqs]
+module.scheduler.aws_scheduler_schedule.this: Refreshing state... [id=default/oyd-project-dev-release-expired]
+module.network.aws_route_table.public: Refreshing state... [id=rtb-0637ddc3e0454fc00]
+module.network.aws_route_table.data: Refreshing state... [id=rtb-0f93cc0ce753dd1af]
+module.network.aws_subnet.private_app[0]: Refreshing state... [id=subnet-08f379fe2e4bed817]
+module.network.aws_subnet.private_app[1]: Refreshing state... [id=subnet-07d19bb6d0384d294]
+module.network.aws_internet_gateway.this: Refreshing state... [id=igw-04912ae43d89c54ff]
+module.network.aws_network_acl.private: Refreshing state... [id=acl-0d31bd23c57b330a3]
+module.network.aws_subnet.public[1]: Refreshing state... [id=subnet-0c699450e3512d0e7]
+module.network.aws_subnet.public[0]: Refreshing state... [id=subnet-09db47a381a67c112]
+module.network.aws_route_table.private[0]: Refreshing state... [id=rtb-0b5c5e07d29f2f7d5]
+module.network.aws_subnet.private_data[0]: Refreshing state... [id=subnet-0abebf075d3e1aba0]
+module.network.aws_subnet.private_data[1]: Refreshing state... [id=subnet-06b996a5d99a9c0f6]
+module.network.aws_network_acl.public: Refreshing state... [id=acl-064586bdb9e8440ac]
+module.network.aws_security_group.vpce[0]: Refreshing state... [id=sg-0f3cec81c4869c320]
+module.iam.aws_iam_role_policy.ci_runner_terraform: Refreshing state... [id=oyd-project-dev-iam-ci-runner:oyd-project-dev-iam-ci-runner-terraform]
+module.iam.aws_iam_role_policy.compute_task_sqs: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-sqs]
+module.iam.aws_iam_role_policy.compute_task_ecs_exec: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-ecs-exec]
+module.iam.aws_iam_role_policy.async_release_ec2: Refreshing state... [id=oyd-project-dev-iam-async-release:oyd-project-dev-iam-async-release-ec2]
+module.iam.aws_iam_role_policy.async_release_logs: Refreshing state... [id=oyd-project-dev-iam-async-release:oyd-project-dev-iam-async-release-logs]
+module.iam.aws_iam_role_policy.async_release_secrets: Refreshing state... [id=oyd-project-dev-iam-async-release:oyd-project-dev-iam-async-release-secrets]
+module.iam.aws_iam_role_policy.async_release_sqs: Refreshing state... [id=oyd-project-dev-iam-async-release:oyd-project-dev-iam-async-release-sqs]
+module.iam.aws_iam_role_policy.async_email_ses: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-ses]
+module.iam.aws_iam_role_policy.async_email_logs: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-logs]
+module.iam.aws_iam_role_policy.async_email_sqs: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-sqs]
+module.iam.aws_iam_role_policy.async_email_secrets: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-secrets]
+module.iam.aws_iam_role_policy.async_receipt_ec2: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-ec2]
+module.iam.aws_iam_role_policy.async_receipt_secrets: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-secrets]
+module.iam.aws_iam_role_policy.async_receipt_sns: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-sns]
+module.iam.aws_iam_role_policy.async_receipt_logs: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-logs]
+module.iam.aws_iam_role_policy.async_receipt_sqs: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-sqs]
+module.iam.aws_iam_role_policy.async_receipt_ssm: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-ssm]
+module.kms.aws_kms_alias.main: Refreshing state... [id=alias/oyd-project-dev-cmk]
+module.network.aws_route.public_igw: Refreshing state... [id=r-rtb-0637ddc3e0454fc001080289494]
+module.network.aws_route_table_association.public[1]: Refreshing state... [id=rtbassoc-07819bce7553124e3]
+module.network.aws_route_table_association.public[0]: Refreshing state... [id=rtbassoc-00714de6a05546db7]
+module.network.aws_route_table_association.private_app[1]: Refreshing state... [id=rtbassoc-0e0f4d25cfd89a0c2]
+module.network.aws_vpc_endpoint.s3[0]: Refreshing state... [id=vpce-04c928e1233b74729]
+module.network.aws_route_table_association.private_app[0]: Refreshing state... [id=rtbassoc-060fb73d06eaf4546]
+module.network.aws_security_group_rule.vpce_ingress_vpc[0]: Refreshing state... [id=sgrule-4075280385]
+module.network.aws_vpc_endpoint.interface["sqs"]: Refreshing state... [id=vpce-0c9cda3299913375c]
+module.network.aws_vpc_endpoint.interface["ssm"]: Refreshing state... [id=vpce-09f2743d73fc0feff]
+module.network.aws_vpc_endpoint.interface["sns"]: Refreshing state... [id=vpce-01cbf1d1b6c3af071]
+module.network.aws_vpc_endpoint.interface["logs"]: Refreshing state... [id=vpce-0de78c0bbd9fb9857]
+module.network.aws_vpc_endpoint.interface["secretsmanager"]: Refreshing state... [id=vpce-0752f3819ff5c2017]
+module.network.aws_route_table_association.private_data[1]: Refreshing state... [id=rtbassoc-06e97abcee09f104d]
+module.network.aws_route_table_association.private_data[0]: Refreshing state... [id=rtbassoc-094fb1ca37c385c3f]
+module.network.aws_network_acl_rule.private_in_web: Refreshing state... [id=nacl-2857506130]
+module.network.aws_network_acl_association.private_data[0]: Refreshing state... [id=aclassoc-047a005afc9b67b5a]
+module.network.aws_network_acl_association.private_data[1]: Refreshing state... [id=aclassoc-08488841173d34d76]
+module.network.aws_network_acl_rule.private_out_ephemeral_public: Refreshing state... [id=nacl-1595477456]
+module.network.aws_network_acl_rule.private_out_http: Refreshing state... [id=nacl-679993120]
+module.network.aws_network_acl_rule.private_in_app: Refreshing state... [id=nacl-2009386199]
+module.network.aws_network_acl_rule.private_in_db: Refreshing state... [id=nacl-3389956121]
+module.network.aws_network_acl_rule.private_out_db: Refreshing state... [id=nacl-729932895]
+module.network.aws_network_acl_rule.private_in_ephemeral: Refreshing state... [id=nacl-395868572]
+module.network.aws_network_acl_rule.private_out_ephemeral: Refreshing state... [id=nacl-3300671935]
+module.network.aws_network_acl_rule.private_out_https: Refreshing state... [id=nacl-3005387599]
+module.network.aws_network_acl_association.private_app[1]: Refreshing state... [id=aclassoc-0b6dc849170891b3b]
+module.network.aws_network_acl_association.private_app[0]: Refreshing state... [id=aclassoc-0f1ed54349ca68254]
+module.network.aws_network_acl_rule.public_out_web: Refreshing state... [id=nacl-1580483453]
+module.network.aws_network_acl_rule.public_in_http: Refreshing state... [id=nacl-2731620500]
+module.network.aws_network_acl_rule.public_out_https: Refreshing state... [id=nacl-3331798125]
+module.network.aws_network_acl_rule.public_out_ephemeral: Refreshing state... [id=nacl-2970216093]
+module.network.aws_network_acl_rule.public_in_https: Refreshing state... [id=nacl-2135417105]
+module.network.aws_network_acl_rule.public_in_ephemeral: Refreshing state... [id=nacl-3264056799]
+module.network.aws_network_acl_rule.public_out_app: Refreshing state... [id=nacl-715959026]
+module.network.aws_network_acl_rule.public_out_http: Refreshing state... [id=nacl-1563588610]
+module.network.aws_network_acl_association.public[0]: Refreshing state... [id=aclassoc-0df51a70b38164d42]
+module.network.aws_network_acl_association.public[1]: Refreshing state... [id=aclassoc-03e6a1fafca661287]
+module.network.aws_network_acl_rule.public_out_db: Refreshing state... [id=nacl-3314618130]
+module.iam.aws_iam_role_policy.async_release_kms: Refreshing state... [id=oyd-project-dev-iam-async-release:oyd-project-dev-iam-async-release-kms]
+module.iam.aws_iam_role_policy.async_receipt_kms: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-kms]
+module.iam.aws_iam_role_policy.async_email_kms: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-kms]
+module.iam.aws_iam_role_policy.compute_task_kms: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-kms]
+module.secrets.aws_ssm_parameter.encryption_key: Refreshing state... [id=/oyd-project/dev/ENCRYPTION_KEY]
+module.storage.aws_s3_bucket.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.secrets.aws_secretsmanager_secret.db_password: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:733202870569:secret:/oyd-project/dev/db_password-SNrkla]
+module.secrets.aws_ssm_parameter.hmac_key: Refreshing state... [id=/oyd-project/dev/HMAC_KEY]
+module.secrets.aws_ssm_parameter.database_url: Refreshing state... [id=/oyd-project/dev/DATABASE_URL]
+module.secrets.aws_ssm_parameter.jwt_secret: Refreshing state... [id=/oyd-project/dev/JWT_SECRET]
+module.security.aws_security_group.web_service: Refreshing state... [id=sg-06d5ebdf4c794a036]
+module.security.aws_security_group.web: Refreshing state... [id=sg-0d824b07415b3473d]
+module.security.aws_security_group.app: Refreshing state... [id=sg-0243e1697c45cbea2]
+module.security.aws_security_group.db: Refreshing state... [id=sg-0e45c49a5fa17e228]
+module.security.aws_security_group.lambda: Refreshing state... [id=sg-0b35a44e59de7cf97]
+module.security.aws_security_group_rule.web_service_egress_internet: Refreshing state... [id=sgrule-2949046501]
+module.security.aws_security_group_rule.db_ingress_from_app: Refreshing state... [id=sgrule-592823110]
+module.security.aws_security_group_rule.app_ingress_from_web: Refreshing state... [id=sgrule-2092525391]
+module.security.aws_security_group_rule.web_egress_app: Refreshing state... [id=sgrule-3307498944]
+module.security.aws_security_group_rule.app_ingress_from_web_service: Refreshing state... [id=sgrule-1235036192]
+module.security.aws_security_group_rule.web_service_egress_app: Refreshing state... [id=sgrule-105230214]
+module.security.aws_security_group_rule.web_ingress_http: Refreshing state... [id=sgrule-1672814293]
+module.security.aws_security_group_rule.web_egress_web_service: Refreshing state... [id=sgrule-2447913533]
+module.security.aws_security_group_rule.web_service_ingress_from_web: Refreshing state... [id=sgrule-2659641719]
+module.security.aws_security_group_rule.app_egress_internet: Refreshing state... [id=sgrule-14738916]
+module.security.aws_security_group_rule.app_egress_db: Refreshing state... [id=sgrule-2579793127]
+module.security.aws_security_group_rule.web_ingress_https: Refreshing state... [id=sgrule-2690846078]
+module.secrets.aws_secretsmanager_secret_version.db_password: Refreshing state... [id=arn:aws:secretsmanager:us-east-1:733202870569:secret:/oyd-project/dev/db_password-SNrkla|terraform-20260621193600607300000002]
+module.security.aws_security_group_rule.lambda_egress_db: Refreshing state... [id=sgrule-170881927]
+module.security.aws_security_group_rule.db_ingress_from_lambda: Refreshing state... [id=sgrule-296800222]
+module.security.aws_security_group_rule.lambda_egress_vpce: Refreshing state... [id=sgrule-1734702937]
+module.iam.aws_iam_role_policy.compute_task_secretsmanager: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-secretsmanager]
+module.database.aws_db_parameter_group.default: Refreshing state... [id=oyd-project-dev-db-pg]
+module.database.aws_db_subnet_group.default: Refreshing state... [id=oyd-project-dev-db-subnet-group]
+module.alb.aws_acm_certificate.this[0]: Refreshing state... [id=arn:aws:acm:us-east-1:733202870569:certificate/ddcda017-341a-4401-aba4-c81f139c4a90]
+module.alb.aws_lb_target_group.api: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-api-tg/6fd7498a991a6758]
+module.alb.aws_lb_target_group.web: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:targetgroup/oyd-project-dev-web-tg/a05c02ec99cc9ad3]
+module.alb.aws_lb.this: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:loadbalancer/app/oyd-project-dev-alb/375540fd795d5d7f]
+module.storage.aws_s3_bucket_public_access_block.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_server_side_encryption_configuration.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_versioning.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.storage.aws_s3_bucket_lifecycle_configuration.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.iam.aws_iam_role_policy.compute_task_s3: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-s3]
+module.iam.aws_iam_role_policy.async_email_s3: Refreshing state... [id=oyd-project-dev-iam-async-email:oyd-project-dev-iam-async-email-s3]
+module.iam.aws_iam_role_policy.async_receipt_s3: Refreshing state... [id=oyd-project-dev-iam-async-receipt:oyd-project-dev-iam-async-receipt-s3]
+module.storage.aws_s3_bucket_policy.this: Refreshing state... [id=oyd-project-receipts-dev]
+module.alb.aws_lb_listener.https[0]: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/375540fd795d5d7f/62531e80dab1df2c]
+module.alb.aws_lb_listener.http: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener/app/oyd-project-dev-alb/375540fd795d5d7f/b4bf762eb7f6a005]
+module.alb.aws_lb_listener_rule.api: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener-rule/app/oyd-project-dev-alb/375540fd795d5d7f/b4bf762eb7f6a005/e02e079bda86dbc9]
+module.alb.aws_lb_listener_rule.https_api[0]: Refreshing state... [id=arn:aws:elasticloadbalancing:us-east-1:733202870569:listener-rule/app/oyd-project-dev-alb/375540fd795d5d7f/62531e80dab1df2c/60ebc576d8e7f794]
+module.database.aws_db_instance.default: Refreshing state... [id=db-NLO4OGEDXMVECC3JOLSAP6DKPE]
+module.observability.aws_cloudwatch_dashboard.main: Refreshing state... [id=oyd-project-dev-dashboard]
+module.observability.aws_cloudwatch_log_group.app: Refreshing state... [id=/observability/oyd-project-dev/app]
+module.compute.aws_cloudwatch_log_group.web: Refreshing state... [id=/ecs/oyd-project-dev/web]
+module.observability.aws_sns_topic.alerts: Refreshing state... [id=arn:aws:sns:us-east-1:733202870569:oyd-project-dev-alerts]
+module.compute.aws_cloudwatch_log_group.api: Refreshing state... [id=/ecs/oyd-project-dev/api]
+module.compute.aws_iam_role.worker_task: Refreshing state... [id=oyd-project-dev-worker-task-role]
+module.observability.aws_budgets_budget.monthly: Refreshing state... [id=733202870569:oyd-project-dev-monthly-budget]
+module.compute.aws_cloudwatch_log_group.worker: Refreshing state... [id=/ecs/oyd-project-dev/worker]
+module.compute.aws_ecs_cluster.this: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:cluster/oyd-project-dev-cluster]
+module.observability.aws_sns_topic_subscription.email: Refreshing state... [id=arn:aws:sns:us-east-1:733202870569:oyd-project-dev-alerts:27d6121d-76ea-4c30-b4c8-49f59dff5d27]
+module.observability.aws_cloudwatch_metric_alarm.release_dlq: Refreshing state... [id=oyd-project-dev-release-dlq-message]
+module.observability.aws_cloudwatch_metric_alarm.api_5xx: Refreshing state... [id=oyd-project-dev-api-5xx-spike]
+module.iam.aws_iam_role_policy.compute_task_rds: Refreshing state... [id=oyd-project-dev-iam-compute-task:oyd-project-dev-iam-compute-task-rds]
+module.compute.aws_ecs_task_definition.api: Refreshing state... [id=oyd-project-dev-api]
+module.compute.aws_ecs_task_definition.web: Refreshing state... [id=oyd-project-dev-web]
+module.compute.aws_iam_role_policy.worker_sqs: Refreshing state... [id=oyd-project-dev-worker-task-role:oyd-project-dev-worker-sqs]
+module.lambda.null_resource.build_receipt_layer: Refreshing state... [id=536702578914821609]
+module.compute.aws_iam_role_policy.worker_kms: Refreshing state... [id=oyd-project-dev-worker-task-role:oyd-project-dev-worker-kms]
+module.compute.aws_iam_role_policy.worker_s3: Refreshing state... [id=oyd-project-dev-worker-task-role:oyd-project-dev-worker-s3]
+module.compute.aws_ecs_task_definition.worker: Refreshing state... [id=oyd-project-dev-worker]
+module.lambda.aws_cloudwatch_log_group.receipt_worker: Refreshing state... [id=/aws/lambda/oyd-project-dev-receipt-worker]
+module.lambda.aws_lambda_function.release_worker: Refreshing state... [id=oyd-project-dev-release-worker]
+module.lambda.aws_lambda_function.email_worker: Refreshing state... [id=oyd-project-dev-email-worker]
+module.lambda.aws_cloudwatch_log_group.email_worker: Refreshing state... [id=/aws/lambda/oyd-project-dev-email-worker]
+module.lambda.aws_cloudwatch_log_group.release_worker: Refreshing state... [id=/aws/lambda/oyd-project-dev-release-worker]
+module.compute.aws_ecs_service.api: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-api-svc]
+module.compute.aws_ecs_service.web: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-web-svc]
+module.lambda.aws_lambda_function.receipt_worker: Refreshing state... [id=oyd-project-dev-receipt-worker]
+module.compute.aws_ecs_service.worker: Refreshing state... [id=arn:aws:ecs:us-east-1:733202870569:service/oyd-project-dev-cluster/oyd-project-dev-worker-svc]
+module.lambda.aws_lambda_event_source_mapping.receipt: Refreshing state... [id=2352b9d0-2c6a-4224-83c5-b651576102a3]
+module.lambda.aws_lambda_event_source_mapping.email: Refreshing state... [id=93c102ef-d059-403e-9e6a-9e14bc2ae7d8]
+module.lambda.aws_lambda_event_source_mapping.release: Refreshing state... [id=e82dda14-69e7-459f-b75e-3532f033b064]
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  + create
+  ~ update in-place
+ <= read (data resources)
+
+Terraform will perform the following actions:
+
+  # module.alb.data.aws_route53_zone.this[0] will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "aws_route53_zone" "this" {
+      + arn                        = (known after apply)
+      + caller_reference           = (known after apply)
+      + comment                    = (known after apply)
+      + id                         = (known after apply)
+      + linked_service_description = (known after apply)
+      + linked_service_principal   = (known after apply)
+      + name                       = "grupo5.oyd.solid.com.gt."
+      + name_servers               = (known after apply)
+      + primary_name_server        = (known after apply)
+      + private_zone               = false
+      + resource_record_set_count  = (known after apply)
+      + tags                       = (known after apply)
+      + vpc_id                     = (known after apply)
+      + zone_id                    = (known after apply)
+    }
+
+  # module.alb.aws_acm_certificate_validation.this[0] will be created
+  + resource "aws_acm_certificate_validation" "this" {
+      + certificate_arn         = "arn:aws:acm:us-east-1:733202870569:certificate/ddcda017-341a-4401-aba4-c81f139c4a90"
+      + id                      = (known after apply)
+      + validation_record_fqdns = (known after apply)
+
+      + timeouts {
+          + create = "10m"
+        }
+    }
+
+  # module.alb.aws_route53_record.app[0] will be created
+  + resource "aws_route53_record" "app" {
+      + allow_overwrite = (known after apply)
+      + fqdn            = (known after apply)
+      + id              = (known after apply)
+      + name            = "app.grupo5.oyd.solid.com.gt"
+      + type            = "A"
+      + zone_id         = (known after apply)
+
+      + alias {
+          + evaluate_target_health = true
+          + name                   = "oyd-project-dev-alb-1119275787.us-east-1.elb.amazonaws.com"
+          + zone_id                = "Z35SXDOTRQ7X7K"
+        }
+    }
+
+  # module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"] will be created
+  + resource "aws_route53_record" "cert_validation" {
+      + allow_overwrite = true
+      + fqdn            = (known after apply)
+      + id              = (known after apply)
+      + name            = "_7fa2f0a18c50956b265f4157dcd842ef.grupo5.oyd.solid.com.gt"
+      + records         = [
+          + "_d8936ab2edc2ba6ca2184dce5c2e5510.jkddzztszm.acm-validations.aws.",
+        ]
+      + ttl             = 60
+      + type            = "CNAME"
+      + zone_id         = (known after apply)
+    }
+
+  # module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"] will be created
+  + resource "aws_route53_record" "cert_validation" {
+      + allow_overwrite = true
+      + fqdn            = (known after apply)
+      + id              = (known after apply)
+      + name            = "_72224349fdef08b1d646ba1260163334.app.grupo5.oyd.solid.com.gt"
+      + records         = [
+          + "_f14f15b46996ba784cba144fe0bb5aed.jkddzztszm.acm-validations.aws.",
+        ]
+      + ttl             = 60
+      + type            = "CNAME"
+      + zone_id         = (known after apply)
+    }
+
+  # module.lambda.data.archive_file.email will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "archive_file" "email" {
+      + id                  = (known after apply)
+      + output_base64sha256 = (known after apply)
+      + output_base64sha512 = (known after apply)
+      + output_md5          = (known after apply)
+      + output_path         = "modules/lambda/handlers/email.zip"
+      + output_sha          = (known after apply)
+      + output_sha256       = (known after apply)
+      + output_sha512       = (known after apply)
+      + output_size         = (known after apply)
+      + source_file         = "modules/lambda/handlers/email.js"
+      + type                = "zip"
+    }
+
+  # module.lambda.data.archive_file.receipt will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "archive_file" "receipt" {
+      + id                  = (known after apply)
+      + output_base64sha256 = (known after apply)
+      + output_base64sha512 = (known after apply)
+      + output_md5          = (known after apply)
+      + output_path         = "modules/lambda/handlers/receipt.zip"
+      + output_sha          = (known after apply)
+      + output_sha256       = (known after apply)
+      + output_sha512       = (known after apply)
+      + output_size         = (known after apply)
+      + source_file         = "modules/lambda/handlers/receipt.js"
+      + type                = "zip"
+    }
+
+  # module.lambda.data.archive_file.receipt_layer will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "archive_file" "receipt_layer" {
+      + id                  = (known after apply)
+      + output_base64sha256 = (known after apply)
+      + output_base64sha512 = (known after apply)
+      + output_md5          = (known after apply)
+      + output_path         = "modules/lambda/layer/receipt-layer.zip"
+      + output_sha          = (known after apply)
+      + output_sha256       = (known after apply)
+      + output_sha512       = (known after apply)
+      + output_size         = (known after apply)
+      + source_dir          = "modules/lambda/layer/nodejs"
+      + type                = "zip"
+    }
+
+  # module.lambda.data.archive_file.release will be read during apply
+  # (depends on a resource or a module with changes pending)
+ <= data "archive_file" "release" {
+      + id                  = (known after apply)
+      + output_base64sha256 = (known after apply)
+      + output_base64sha512 = (known after apply)
+      + output_md5          = (known after apply)
+      + output_path         = "modules/lambda/handlers/release.zip"
+      + output_sha          = (known after apply)
+      + output_sha256       = (known after apply)
+      + output_sha512       = (known after apply)
+      + output_size         = (known after apply)
+      + source_file         = "modules/lambda/handlers/release.js"
+      + type                = "zip"
+    }
+
+  # module.lambda.aws_lambda_function.receipt_worker will be updated in-place
+  ~ resource "aws_lambda_function" "receipt_worker" {
+        id                             = "oyd-project-dev-receipt-worker"
+      ~ layers                         = [
+          - "arn:aws:lambda:us-east-1:733202870569:layer:oyd-project-dev-receipt-layer:1",
+        ] -> (known after apply)
+        tags                           = {
+            "Environment" = "dev"
+            "ManagedBy"   = "terraform"
+            "Project"     = "oyd-project"
+            "Service"     = "receipt-worker"
+        }
+        # (28 unchanged attributes hidden)
+
+        # (5 unchanged blocks hidden)
+    }
+
+  # module.lambda.aws_lambda_layer_version.receipt will be created
+  + resource "aws_lambda_layer_version" "receipt" {
+      + arn                         = (known after apply)
+      + code_sha256                 = (known after apply)
+      + compatible_runtimes         = [
+          + "nodejs20.x",
+        ]
+      + created_date                = (known after apply)
+      + description                 = "pdf-lib + qrcode for receipt PDF generation"
+      + filename                    = "modules/lambda/layer/receipt-layer.zip"
+      + id                          = (known after apply)
+      + layer_arn                   = (known after apply)
+      + layer_name                  = "oyd-project-dev-receipt-layer"
+      + signing_job_arn             = (known after apply)
+      + signing_profile_version_arn = (known after apply)
+      + skip_destroy                = false
+      + source_code_hash            = (known after apply)
+      + source_code_size            = (known after apply)
+      + version                     = (known after apply)
+    }
+
+  # module.network.aws_network_acl_rule.private_in_https_vpce will be created
+  + resource "aws_network_acl_rule" "private_in_https_vpce" {
+      + cidr_block     = "10.0.0.0/16"
+      + egress         = false
+      + from_port      = 443
+      + id             = (known after apply)
+      + network_acl_id = "acl-0d31bd23c57b330a3"
+      + protocol       = "tcp"
+      + rule_action    = "allow"
+      + rule_number    = 105
+      + to_port        = 443
+    }
+
+Plan: 6 to add, 1 to change, 0 to destroy.
+module.network.aws_network_acl_rule.private_in_https_vpce: Creating...
+module.network.aws_network_acl_rule.private_in_https_vpce: Creation complete after 1s [id=nacl-278414393]
+module.alb.data.aws_route53_zone.this[0]: Reading...
+module.lambda.data.archive_file.release: Reading...
+module.lambda.data.archive_file.email: Reading...
+module.lambda.data.archive_file.receipt: Reading...
+module.lambda.data.archive_file.receipt_layer: Reading...
+module.lambda.data.archive_file.receipt_layer: Read complete after 0s [id=09ed4a76abdcca978156f629b729f66f025b0b0b]
+module.lambda.aws_lambda_layer_version.receipt: Creating...
+module.lambda.data.archive_file.receipt: Read complete after 0s [id=3c63a0645868fd388908ba5574e01e3e13c66e97]
+module.lambda.data.archive_file.email: Read complete after 0s [id=0f136104cf9680eacc07082a55ea78b5d1df3c5e]
+module.lambda.data.archive_file.release: Read complete after 0s [id=af4067f75303194b4507c576e68d8fbe14ade0b0]
+module.alb.data.aws_route53_zone.this[0]: Read complete after 1s [id=Z01666613EUZ7C8G5VNR4]
+module.alb.aws_route53_record.app[0]: Creating...
+module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"]: Creating...
+module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"]: Creating...
+module.lambda.aws_lambda_layer_version.receipt: Creation complete after 3s [id=arn:aws:lambda:us-east-1:733202870569:layer:oyd-project-dev-receipt-layer:2]
+module.lambda.aws_lambda_function.receipt_worker: Modifying... [id=oyd-project-dev-receipt-worker]
+module.lambda.aws_lambda_function.receipt_worker: Modifications complete after 6s [id=oyd-project-dev-receipt-worker]
+module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"]: Still creating... [00m10s elapsed]
+module.alb.aws_route53_record.app[0]: Still creating... [00m10s elapsed]
+module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"]: Still creating... [00m10s elapsed]
+module.alb.aws_route53_record.app[0]: Still creating... [00m20s elapsed]
+module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"]: Still creating... [00m20s elapsed]
+module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"]: Still creating... [00m20s elapsed]
+module.alb.aws_route53_record.app[0]: Still creating... [00m30s elapsed]
+module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"]: Still creating... [00m30s elapsed]
+module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"]: Still creating... [00m30s elapsed]
+module.alb.aws_route53_record.cert_validation["app.grupo5.oyd.solid.com.gt"]: Creation complete after 31s [id=Z01666613EUZ7C8G5VNR4__72224349fdef08b1d646ba1260163334.app.grupo5.oyd.solid.com.gt._CNAME]
+module.alb.aws_route53_record.app[0]: Creation complete after 32s [id=Z01666613EUZ7C8G5VNR4_app.grupo5.oyd.solid.com.gt_A]
+module.alb.aws_route53_record.cert_validation["*.grupo5.oyd.solid.com.gt"]: Creation complete after 32s [id=Z01666613EUZ7C8G5VNR4__7fa2f0a18c50956b265f4157dcd842ef.grupo5.oyd.solid.com.gt._CNAME]
+module.alb.aws_acm_certificate_validation.this[0]: Creating...
+module.alb.aws_acm_certificate_validation.this[0]: Creation complete after 0s [id=2026-06-20 19:45:52.803 +0000 UTC]
+
+Apply complete! Resources: 6 added, 1 changed, 0 destroyed.
+
+Outputs:
+
+acm_certificate_arn = "arn:aws:acm:us-east-1:733202870569:certificate/ddcda017-341a-4401-aba4-c81f139c4a90"
+alb_dns_name = "oyd-project-dev-alb-1119275787.us-east-1.elb.amazonaws.com"
+alb_https_url = "https://app.grupo5.oyd.solid.com.gt"
+alb_url = "http://oyd-project-dev-alb-1119275787.us-east-1.elb.amazonaws.com"
+app_fqdn = "app.grupo5.oyd.solid.com.gt"
+app_security_group_id = "sg-0243e1697c45cbea2"
+db_address = "oyd-project-dev-db.cutyuaiiee0n.us-east-1.rds.amazonaws.com"
+db_endpoint = "oyd-project-dev-db.cutyuaiiee0n.us-east-1.rds.amazonaws.com:5432"
+db_instance_arn = "arn:aws:rds:us-east-1:733202870569:db:oyd-project-dev-db"
+db_password_secret_arn = "arn:aws:secretsmanager:us-east-1:733202870569:secret:/oyd-project/dev/db_password-SNrkla"
+db_password_secret_name = "/oyd-project/dev/db_password"
+db_security_group_id = "sg-0e45c49a5fa17e228"
+ecr_api_repository_url = "733202870569.dkr.ecr.us-east-1.amazonaws.com/oyd-project-api"
+ecr_web_repository_url = "733202870569.dkr.ecr.us-east-1.amazonaws.com/oyd-project-web"
+ecs_api_service_name = "oyd-project-dev-api-svc"
+ecs_cluster_arn = "arn:aws:ecs:us-east-1:733202870569:cluster/oyd-project-dev-cluster"
+ecs_cluster_name = "oyd-project-dev-cluster"
+ecs_web_service_name = "oyd-project-dev-web-svc"
+email_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-email-dlq"
+email_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-dlq"
+email_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-email-queue"
+email_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-email-queue"
+iam_async_email_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-async-email"
+iam_async_receipt_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-async-receipt"
+iam_async_release_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-async-release"
+iam_ci_runner_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-ci-runner"
+iam_compute_exec_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-exec"
+iam_compute_task_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-compute-task"
+iam_scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-scheduler"
+kms_alias_arn = "arn:aws:kms:us-east-1:733202870569:alias/oyd-project-dev-cmk"
+kms_alias_name = "alias/oyd-project-dev-cmk"
+kms_key_arn = "arn:aws:kms:us-east-1:733202870569:key/1ce62788-3bbe-4749-8b46-80142c02086c"
+kms_key_id = "1ce62788-3bbe-4749-8b46-80142c02086c"
+lambda_email_worker_arn = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-email-worker"
+lambda_email_worker_name = "oyd-project-dev-email-worker"
+lambda_receipt_worker_arn = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-receipt-worker"
+lambda_receipt_worker_name = "oyd-project-dev-receipt-worker"
+lambda_release_worker_arn = "arn:aws:lambda:us-east-1:733202870569:function:oyd-project-dev-release-worker"
+lambda_release_worker_name = "oyd-project-dev-release-worker"
+nat_gateway_ids = []
+observability_budget_name = "oyd-project-dev-monthly-budget"
+observability_dashboard_name = "oyd-project-dev-dashboard"
+observability_sns_topic_arn = "arn:aws:sns:us-east-1:733202870569:oyd-project-dev-alerts"
+private_app_subnet_ids = [
+  "subnet-08f379fe2e4bed817",
+  "subnet-07d19bb6d0384d294",
+]
+private_data_subnet_ids = [
+  "subnet-0abebf075d3e1aba0",
+  "subnet-06b996a5d99a9c0f6",
+]
+private_nacl_id = "acl-0d31bd23c57b330a3"
+public_nacl_id = "acl-064586bdb9e8440ac"
+public_subnet_ids = [
+  "subnet-09db47a381a67c112",
+  "subnet-0c699450e3512d0e7",
+]
+receipt_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-dlq"
+receipt_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-dlq"
+receipt_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-receipt-queue"
+receipt_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-receipt-queue"
+receipts_bucket_arn = "arn:aws:s3:::oyd-project-receipts-dev"
+receipts_bucket_name = "oyd-project-receipts-dev"
+release_dlq_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-release-dlq"
+release_dlq_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-dlq"
+release_queue_arn = "arn:aws:sqs:us-east-1:733202870569:oyd-project-dev-release-queue"
+release_queue_url = "https://sqs.us-east-1.amazonaws.com/733202870569/oyd-project-dev-release-queue"
+scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-scheduler"
+scheduler_schedule_name = "oyd-project-dev-release-expired"
+sns_receipt_ready_topic_arn = "arn:aws:sns:us-east-1:733202870569:oyd-project-dev-receipt-ready"
+ssm_parameter_names = {
+  "DATABASE_URL" = "/oyd-project/dev/DATABASE_URL"
+  "ENCRYPTION_KEY" = "/oyd-project/dev/ENCRYPTION_KEY"
+  "HMAC_KEY" = "/oyd-project/dev/HMAC_KEY"
+  "JWT_SECRET" = "/oyd-project/dev/JWT_SECRET"
+}
+vpc_id = "vpc-013a3f24358015fd7"
+web_security_group_id = "sg-0d824b07415b3473d"
+web_service_security_group_id = "sg-06d5ebdf4c794a036"
