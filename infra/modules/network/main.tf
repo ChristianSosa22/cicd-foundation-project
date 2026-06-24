@@ -236,8 +236,6 @@ locals {
     logs           = "com.amazonaws.${data.aws_region.current.name}.logs"
     secretsmanager = "com.amazonaws.${data.aws_region.current.name}.secretsmanager"
     ssm            = "com.amazonaws.${data.aws_region.current.name}.ssm"
-    ecr_api        = "com.amazonaws.${data.aws_region.current.name}.ecr.api"
-    ecr_dkr        = "com.amazonaws.${data.aws_region.current.name}.ecr.dkr"
   }
 }
 

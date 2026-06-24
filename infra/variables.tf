@@ -58,7 +58,7 @@ variable "enable_nat_gateway" {
 }
 
 variable "create_vpc_endpoints" {
-  description = "When true, provisions Gateway VPC Endpoints (S3) and Interface VPC Endpoints (SQS, SNS, Logs, SecretsManager, SSM, ECR) in private app subnets. Required for VPC-attached Lambdas to reach AWS services without NAT."
+  description = "When true, provisions Gateway VPC Endpoints (S3) and Interface VPC Endpoints (SQS, SNS, Logs, SecretsManager, SSM) in private app subnets. Required for VPC-attached Lambdas to reach AWS services without NAT."
   type        = bool
   default     = true
 }

@@ -14,6 +14,8 @@ public_subnet_cidrs       = ["10.0.0.0/24", "10.0.1.0/24"]
 private_app_subnet_cidrs  = ["10.0.11.0/24", "10.0.12.0/24"]
 private_data_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24"]
 single_nat_gateway        = false # redundant NAT per AZ for staging HA
+enable_nat_gateway        = false # no NAT — ECS tasks run in public subnets
+create_vpc_endpoints      = true  # VPC Endpoints for Lambda access to SQS/SNS/S3/SecretsManager/SSM/Logs
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db_name              = "parking"
