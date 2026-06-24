@@ -30,8 +30,7 @@ resource "null_resource" "build_receipt_layer" {
   }
 
   provisioner "local-exec" {
-    command     = "npm install --prefix ${path.module}/layer/nodejs --omit=dev"
-    working_dir = path.module
+    command = "npm install --prefix ${path.module}/layer/nodejs --omit=dev"
   }
 }
 
