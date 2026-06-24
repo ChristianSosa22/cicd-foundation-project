@@ -50,6 +50,7 @@ jobs:
       # This prevents accidentally destroying the wrong environment when the
       # operator selects from the dropdown without reading carefully.
       - name: Verify confirmation
+        working-directory: .
         run: |
           if [ "${{ inputs.confirm }}" != "${{ inputs.environment }}" ]; then
             echo "::error::Confirmation mismatch."
