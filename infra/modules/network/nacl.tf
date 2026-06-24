@@ -146,6 +146,18 @@ resource "aws_network_acl_rule" "private_in_app" {
   to_port        = var.app_port
 }
 
+# Inbound: HTTPS from VPC (VPC Endpoints: SQS, SNS, SSM, SecretsManager, Logs)
+resource "aws_network_acl_rule" "private_in_https_vpce" {
+  network_acl_id = aws_network_acl.private.id
+  rule_number    = 105
+  egress         = false
+  protocol       = "tcp"
+  rule_action    = "allow"
+  cidr_block     = var.vpc_cidr
+  from_port      = var.https_port
+  to_port        = var.https_port
+}
+
 # Inbound: web port from VPC (ALB)
 resource "aws_network_acl_rule" "private_in_web" {
   network_acl_id = aws_network_acl.private.id

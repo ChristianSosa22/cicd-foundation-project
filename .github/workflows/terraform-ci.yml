@@ -302,13 +302,20 @@ jobs:
           echo "Waiting for migration task $TASK_ARN..."
           aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
 
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
+          TASK_JSON=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN")
+          EXIT_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].containers[0].exitCode // "None"')
+          STOP_REASON=$(echo "$TASK_JSON" | jq -r '.tasks[0].stoppedReason // "unknown"')
+          STOP_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].stopCode // "unknown"')
+
+          echo "Task stop code: $STOP_CODE"
+          echo "Task stopped reason: $STOP_REASON"
+          echo "Container exit code: $EXIT_CODE"
+
+          TASK_ID="${TASK_ARN##*/}"
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "Migration failed with exit code $EXIT_CODE"
-            TASK_ID="${TASK_ARN##*/}"
+            echo "Migration failed (exit code: $EXIT_CODE, stop code: $STOP_CODE)"
+            echo "Stopped reason: $STOP_REASON"
             aws logs get-log-events \
               --log-group-name "/ecs/${CLUSTER%-cluster}/api" \
               --log-stream-name "ecs/api/$TASK_ID" \
@@ -520,13 +527,20 @@ jobs:
           echo "Waiting for migration task $TASK_ARN..."
           aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
 
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
+          TASK_JSON=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN")
+          EXIT_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].containers[0].exitCode // "None"')
+          STOP_REASON=$(echo "$TASK_JSON" | jq -r '.tasks[0].stoppedReason // "unknown"')
+          STOP_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].stopCode // "unknown"')
+
+          echo "Task stop code: $STOP_CODE"
+          echo "Task stopped reason: $STOP_REASON"
+          echo "Container exit code: $EXIT_CODE"
+
+          TASK_ID="${TASK_ARN##*/}"
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "Migration failed with exit code $EXIT_CODE"
-            TASK_ID="${TASK_ARN##*/}"
+            echo "Migration failed (exit code: $EXIT_CODE, stop code: $STOP_CODE)"
+            echo "Stopped reason: $STOP_REASON"
             aws logs get-log-events \
               --log-group-name "/ecs/${CLUSTER%-cluster}/api" \
               --log-stream-name "ecs/api/$TASK_ID" \
@@ -664,13 +678,20 @@ jobs:
           echo "Waiting for migration task $TASK_ARN..."
           aws ecs wait tasks-stopped --cluster "$CLUSTER" --tasks "$TASK_ARN"
 
-          EXIT_CODE=$(aws ecs describe-tasks \
-            --cluster "$CLUSTER" --tasks "$TASK_ARN" \
-            --query 'tasks[0].containers[0].exitCode' --output text)
+          TASK_JSON=$(aws ecs describe-tasks --cluster "$CLUSTER" --tasks "$TASK_ARN")
+          EXIT_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].containers[0].exitCode // "None"')
+          STOP_REASON=$(echo "$TASK_JSON" | jq -r '.tasks[0].stoppedReason // "unknown"')
+          STOP_CODE=$(echo "$TASK_JSON" | jq -r '.tasks[0].stopCode // "unknown"')
+
+          echo "Task stop code: $STOP_CODE"
+          echo "Task stopped reason: $STOP_REASON"
+          echo "Container exit code: $EXIT_CODE"
+
+          TASK_ID="${TASK_ARN##*/}"
 
           if [ "$EXIT_CODE" != "0" ]; then
-            echo "Migration failed with exit code $EXIT_CODE"
-            TASK_ID="${TASK_ARN##*/}"
+            echo "Migration failed (exit code: $EXIT_CODE, stop code: $STOP_CODE)"
+            echo "Stopped reason: $STOP_REASON"
             aws logs get-log-events \
               --log-group-name "/ecs/${CLUSTER%-cluster}/api" \
               --log-stream-name "ecs/api/$TASK_ID" \
