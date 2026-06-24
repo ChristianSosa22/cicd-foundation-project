@@ -15,6 +15,7 @@ private_app_subnet_cidrs  = ["10.0.11.0/24", "10.0.12.0/24"] # ECS Fargate tasks
 private_data_subnet_cidrs = ["10.0.21.0/24", "10.0.22.0/24"] # RDS (isolated, no NAT)
 single_nat_gateway        = true                             # single NAT for dev cost savings; set false for prod HA
 enable_nat_gateway        = false                            # no NAT — ECS tasks run in public subnets to eliminate ~$57/month NAT cost
+create_vpc_endpoints      = true                             # VPC Endpoints for Lambda access to SQS/SNS/S3/SecretsManager/SSM/ECR/Logs
 
 # ── Database ──────────────────────────────────────────────────────────────────
 db_name              = "parking"
@@ -55,9 +56,9 @@ email_visibility_timeout_seconds   = 30      # email API call
 email_message_retention_seconds    = 345600  # 4 days
 
 # ── Scheduler ─────────────────────────────────────────────────────────────────
-# Sweeps expired reservations every 20 minutes. Timezone set to Guatemala (CST)
-# to align cron evaluation with local business hours.
-schedule_expression      = "rate(20 minutes)"
+# Sweeps expired reservations every 1 minute for class demonstration.
+# Production would use rate(20 minutes).
+schedule_expression      = "rate(1 minute)"
 scheduler_timezone       = "America/Guatemala"
 scheduler_target_message = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"
 
@@ -79,3 +80,6 @@ ssl_policy       = "ELBSecurityPolicy-TLS13-1-2-2021-06"
 # ── Lambda Module ─────────────────────────────────────────────────────────────
 lambda_batch_size              = 10
 lambda_maximum_batching_window = 0
+
+# ── SES ────────────────────────────────────────────────────────────────────────
+ses_from_address = "christiansosa2204@gmail.com"

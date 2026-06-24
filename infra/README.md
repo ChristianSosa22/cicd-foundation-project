@@ -394,9 +394,9 @@ A continuación se detalla el plan de ejecución enfocado exclusivamente en el m
 | :--- | :--- | :--- |
 | `compute_exec_role` | ECS Fargate Agent | Descarga de ECR, creación de logs y lectura selectiva de secretos. |
 | `compute_task_role` | App (Next.js / Express) | Interacción directa con S3, SQS y conexiones RDS. |
-| `async_consumer_receipt_role` | Lambda Recibos | Consumo de SQS y escritura en Bucket S3 de recibos. |
-| `async_consumer_release_role` | Lambda Liberación | Consumo de SQS y lectura en Secrets Manager. |
-| `async_consumer_email_role` | Lambda Correos | Consumo de SQS de notificaciones. |
+| `async_consumer_receipt_role` | Lambda receipt-worker | Consumo de SQS, escritura en S3, publicación en SNS, lectura de Secrets Manager + SSM (ENCRYPTION_KEY, HMAC_KEY), KMS (descifrado + generación de data keys), EC2 para ENI de VPC. |
+| `async_consumer_release_role` | Lambda release-worker | Consumo de SQS, lectura de Secrets Manager, KMS (descifrado), EC2 para ENI de VPC. |
+| `async_consumer_email_role` | Lambda email-worker | Consumo de SQS, envío de correos vía SES, lectura de objetos S3 (presigned URL), KMS (descifrado). **Sin acceso a RDS** (fuera de VPC). |
 | `scheduler_role` | EventBridge Scheduler | Permiso único de SQS:SendMessage hacia la cola destino. |
 | `ci_runner_role` | GitHub Actions (OIDC) | Permisos de despliegue acotados por la rama principal (main). |
 
@@ -405,15 +405,15 @@ A continuación se detalla el plan de ejecución enfocado exclusivamente en el m
 
 ```text
  # ── IAM Module Evidence ────────────────────────────────────────────────────────
-# Generated: 2026-06-21
+# Generated: 2026-06-21 | Updated: 2026-06-22 (Delivery 5)
 # Source: terraform state list | grep "module\.iam\."
 #
 # 7 IAM roles (no wildcards, least-privilege):
 #   - compute_exec:      ECS task execution (ECR pull, CloudWatch logs, SSM/Secrets)
 #   - compute_task:      ECS task role (S3, SQS, RDS, KMS)
-#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, EC2 for VPC ENI)
-#   - async_release:     Lambda release-worker (SQS, Secrets, EC2 for VPC ENI)
-#   - async_email:       Lambda email-worker (SQS, Secrets)
+#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, Secrets, SSM, KMS, EC2 VPC ENI)
+#   - async_release:     Lambda release-worker (SQS, Secrets, KMS, EC2 VPC ENI)
+#   - async_email:       Lambda email-worker (SQS, SES, S3, KMS)
 #   - scheduler:         EventBridge Scheduler (SQS SendMessage)
 #   - ci_runner:         GitHub Actions OIDC (Terraform plan/apply)
 #
@@ -427,16 +427,22 @@ module.iam.aws_iam_role.ci_runner
 module.iam.aws_iam_role.compute_exec
 module.iam.aws_iam_role.compute_task
 module.iam.aws_iam_role.scheduler
+module.iam.aws_iam_role_policy.async_email_kms
 module.iam.aws_iam_role_policy.async_email_logs
+module.iam.aws_iam_role_policy.async_email_s3
 module.iam.aws_iam_role_policy.async_email_secrets
+module.iam.aws_iam_role_policy.async_email_ses
 module.iam.aws_iam_role_policy.async_email_sqs
 module.iam.aws_iam_role_policy.async_receipt_ec2
+module.iam.aws_iam_role_policy.async_receipt_kms
 module.iam.aws_iam_role_policy.async_receipt_logs
 module.iam.aws_iam_role_policy.async_receipt_s3
 module.iam.aws_iam_role_policy.async_receipt_secrets
 module.iam.aws_iam_role_policy.async_receipt_sns
 module.iam.aws_iam_role_policy.async_receipt_sqs
+module.iam.aws_iam_role_policy.async_receipt_ssm
 module.iam.aws_iam_role_policy.async_release_ec2
+module.iam.aws_iam_role_policy.async_release_kms
 module.iam.aws_iam_role_policy.async_release_logs
 module.iam.aws_iam_role_policy.async_release_secrets
 module.iam.aws_iam_role_policy.async_release_sqs

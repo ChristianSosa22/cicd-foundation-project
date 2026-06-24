@@ -52,9 +52,15 @@ variable "single_nat_gateway" {
 }
 
 variable "enable_nat_gateway" {
-  description = "When false, no NAT Gateways are provisioned. ECS tasks must run in public subnets (assign_public_ip=true in compute module) to reach AWS APIs. Set false for dev to eliminate ~$32+/month NAT fixed cost."
+  description = "When false, no NAT Gateways are provisioned. ECS tasks must run in public subnets (assign_public_ip=true) to reach AWS APIs. Set false for dev to eliminate ~$32+/month NAT fixed cost."
   type        = bool
   default     = false
+}
+
+variable "create_vpc_endpoints" {
+  description = "When true, provisions Gateway VPC Endpoints (S3) and Interface VPC Endpoints (SQS, SNS, Logs, SecretsManager, SSM, ECR) in private app subnets. Required for VPC-attached Lambdas to reach AWS services without NAT."
+  type        = bool
+  default     = true
 }
 
 # ── Database module ───────────────────────────────────────────────────────────
@@ -349,4 +355,12 @@ variable "lambda_maximum_batching_window" {
   description = "Maximum time in seconds to gather messages before invoking Lambda. 0 = process immediately."
   type        = number
   default     = 0
+}
+
+# ── SES ────────────────────────────────────────────────────────────────────────
+
+variable "ses_from_address" {
+  description = "Sender email address for SES. Must be verified in SES sandbox before first use."
+  type        = string
+  default     = ""
 }

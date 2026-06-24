@@ -37,3 +37,30 @@ output "private_nacl_id" {
   description = "ID of the private subnet Network ACL."
   value       = aws_network_acl.private.id
 }
+
+# ── VPC Endpoints ──────────────────────────────────────────────────────────────
+
+output "s3_vpc_endpoint_id" {
+  description = "ID of the S3 Gateway VPC Endpoint."
+  value       = try(aws_vpc_endpoint.s3[0].id, null)
+}
+
+output "s3_vpc_endpoint_prefix_list_id" {
+  description = "Prefix list ID for S3 Gateway VPC Endpoint. Use in route table entries."
+  value       = try(aws_vpc_endpoint.s3[0].prefix_list_id, null)
+}
+
+output "interface_vpc_endpoint_ids" {
+  description = "Map of service key to Interface VPC Endpoint ID."
+  value       = { for k, v in aws_vpc_endpoint.interface : k => v.id }
+}
+
+output "interface_vpc_endpoint_dns" {
+  description = "Map of service key to first DNS name of the Interface VPC Endpoint."
+  value       = { for k, v in aws_vpc_endpoint.interface : k => v.dns_entry[0]["dns_name"] }
+}
+
+output "vpce_security_group_id" {
+  description = "ID of the VPC Endpoints security group (created inside network module)."
+  value       = try(aws_security_group.vpce[0].id, null)
+}

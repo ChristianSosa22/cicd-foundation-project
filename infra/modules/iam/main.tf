@@ -292,6 +292,36 @@ resource "aws_iam_role_policy" "async_receipt_ec2" {
   })
 }
 
+# SSM: read ENCRYPTION_KEY and HMAC_KEY parameters (for decrypting plate_enc)
+resource "aws_iam_role_policy" "async_receipt_ssm" {
+  name = "${local.prefix}-iam-async-receipt-ssm"
+  role = aws_iam_role.async_consumer_receipt.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ssm:GetParameter", "ssm:GetParameters"]
+      Resource = "arn:aws:ssm:${var.region}:${data.aws_caller_identity.this.account_id}:parameter/${var.project_name}/*"
+    }]
+  })
+}
+
+# KMS: decrypt + generate data key for reading SSM/Secrets Manager values
+resource "aws_iam_role_policy" "async_receipt_kms" {
+  name = "${local.prefix}-iam-async-receipt-kms"
+  role = aws_iam_role.async_consumer_receipt.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = var.kms_key_arn
+    }]
+  })
+}
+
 # ── 4. Async Consumer: Release Worker Role ────────────────────────────────────
 # Lambda execution role for `release-worker`: SQS consume on release queue, KMS, logs.
 resource "aws_iam_role" "async_consumer_release" {
@@ -378,6 +408,21 @@ resource "aws_iam_role_policy" "async_release_ec2" {
   })
 }
 
+# KMS: decrypt + generate data key for reading Secrets Manager values
+resource "aws_iam_role_policy" "async_release_kms" {
+  name = "${local.prefix}-iam-async-release-kms"
+  role = aws_iam_role.async_consumer_release.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = var.kms_key_arn
+    }]
+  })
+}
+
 # ── 5. Async Consumer: Email Worker Role ──────────────────────────────────────
 # Lambda execution role for `email-worker`: SQS consume on email queue, KMS, logs.
 resource "aws_iam_role" "async_consumer_email" {
@@ -442,6 +487,51 @@ resource "aws_iam_role_policy" "async_email_logs" {
       Effect   = "Allow"
       Action   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents"]
       Resource = "arn:aws:logs:${var.region}:${data.aws_caller_identity.this.account_id}:log-group:/aws/lambda/${local.prefix}*:*:*"
+    }]
+  })
+}
+
+# SES: send email (resource not supported by SES, use *)
+resource "aws_iam_role_policy" "async_email_ses" {
+  name = "${local.prefix}-iam-async-email-ses"
+  role = aws_iam_role.async_consumer_email.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["ses:SendEmail", "ses:SendRawEmail"]
+      Resource = "*"
+    }]
+  })
+}
+
+# S3: read receipt object (for presigned URL generation)
+resource "aws_iam_role_policy" "async_email_s3" {
+  name = "${local.prefix}-iam-async-email-s3"
+  role = aws_iam_role.async_consumer_email.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["s3:GetObject"]
+      Resource = "${var.receipts_bucket_arn}/*"
+    }]
+  })
+}
+
+# KMS: decrypt for reading S3 objects encrypted with SSE-KMS
+resource "aws_iam_role_policy" "async_email_kms" {
+  name = "${local.prefix}-iam-async-email-kms"
+  role = aws_iam_role.async_consumer_email.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect   = "Allow"
+      Action   = ["kms:Decrypt", "kms:GenerateDataKey"]
+      Resource = var.kms_key_arn
     }]
   })
 }

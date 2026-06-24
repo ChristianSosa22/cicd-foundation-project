@@ -169,3 +169,50 @@ resource "aws_security_group_rule" "db_ingress_from_app" {
   source_security_group_id = aws_security_group.app.id
   description              = "Ingress from app-sg on DB port"
 }
+
+# ── 6. SECURITY GROUP: sg-parking-lambda ────────────────────────────────────────
+# Attached to receipt-worker and release-worker Lambdas (VPC-attached).
+# email-worker stays outside VPC (needs internet for SES — no VPCE available).
+resource "aws_security_group" "lambda" {
+  name        = "${var.name}-${var.environment}-lambda-sg"
+  description = "Lambda tier: egress to RDS on DB port + VPC Endpoints on 443"
+  vpc_id      = var.vpc_id
+
+  tags = {
+    Name        = "${var.name}-${var.environment}-lambda-sg"
+    Environment = var.environment
+    Project     = var.name
+    ManagedBy   = "terraform"
+  }
+}
+
+resource "aws_security_group_rule" "lambda_egress_db" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.lambda.id
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.db.id
+  description              = "Egress to RDS on DB port"
+}
+
+resource "aws_security_group_rule" "lambda_egress_vpce" {
+  type                     = "egress"
+  security_group_id        = aws_security_group.lambda.id
+  from_port                = var.https_port
+  to_port                  = var.https_port
+  protocol                 = "tcp"
+  source_security_group_id = var.vpce_security_group_id
+  description              = "Egress to VPC Endpoints (SQS, SNS, SecretsManager, SSM, Logs) on 443"
+}
+
+# DB SG: allow ingress from lambda SG (receipt/release workers need RDS)
+resource "aws_security_group_rule" "db_ingress_from_lambda" {
+  type                     = "ingress"
+  security_group_id        = aws_security_group.db.id
+  from_port                = var.db_port
+  to_port                  = var.db_port
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.lambda.id
+  description              = "Ingress from lambda-sg on DB port"
+}

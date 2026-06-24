@@ -19,17 +19,19 @@ module "network" {
   private_data_subnet_cidrs = var.private_data_subnet_cidrs
   single_nat_gateway        = var.single_nat_gateway
   enable_nat_gateway        = var.enable_nat_gateway
+  create_vpc_endpoints      = var.create_vpc_endpoints
 }
 
 module "security" {
   source = "./modules/security"
 
-  name        = var.project_name
-  environment = var.environment
-  vpc_id      = module.network.vpc_id
-  app_port    = var.app_port
-  web_port    = var.web_port
-  db_port     = var.db_port
+  name                   = var.project_name
+  environment            = var.environment
+  vpc_id                 = module.network.vpc_id
+  app_port               = var.app_port
+  web_port               = var.web_port
+  db_port                = var.db_port
+  vpce_security_group_id = module.network.vpce_security_group_id
 
   depends_on = [module.network]
 }
@@ -234,19 +236,39 @@ module "lambda" {
   release_queue_arn = module.async_release.queue_arn
   email_queue_arn   = module.async_email.queue_arn
 
+  # SQS queue URL (for delete operations inside handlers)
+  receipt_queue_url = module.async_receipt.queue_url
+
   # S3 bucket from storage module
   receipts_bucket_arn  = module.storage.bucket_arn
   receipts_bucket_name = module.storage.bucket_name
 
+  # SNS topic from IAM module
+  sns_topic_arn = module.iam.sns_topic_arn
+
   # VPC config for receipt-worker and release-worker
-  subnet_ids        = module.network.private_app_subnet_ids
-  security_group_id = module.security.app_security_group_id
+  subnet_ids               = module.network.private_app_subnet_ids
+  lambda_security_group_id = module.security.lambda_security_group_id
+
+  # Database connection (env vars)
+  db_host                = module.database.db_address
+  db_port                = module.database.db_port
+  db_name                = var.db_name
+  db_user                = var.db_username
+  db_password_secret_arn = module.secrets.db_password_secret_arn
+
+  # SSM parameter names (for ENCRYPTION_KEY and HMAC_KEY)
+  encryption_key_param_name = module.secrets.parameter_names["ENCRYPTION_KEY"]
+  hmac_key_param_name       = module.secrets.parameter_names["HMAC_KEY"]
+
+  # SES (for email-worker)
+  ses_from_address = var.ses_from_address
 
   # Event source mapping config
   batch_size              = var.lambda_batch_size
   maximum_batching_window = var.lambda_maximum_batching_window
 
-  depends_on = [module.network, module.security, module.iam, module.async_receipt, module.async_release, module.async_email]
+  depends_on = [module.network, module.security, module.iam, module.async_receipt, module.async_release, module.async_email, module.database, module.secrets]
 }
 
 module "observability" {

@@ -3,6 +3,8 @@ data "aws_availability_zones" "available" {
   state = "available"
 }
 
+data "aws_region" "current" {}
+
 locals {
   azs       = slice(data.aws_availability_zones.available.names, 0, var.az_count)
   nat_count = var.single_nat_gateway ? 1 : var.az_count
@@ -176,4 +178,98 @@ resource "aws_route_table_association" "private_data" {
   count          = var.az_count
   subnet_id      = aws_subnet.private_data[count.index].id
   route_table_id = aws_route_table.data.id
+}
+
+# ── VPC Endpoints ──────────────────────────────────────────────────────────────
+# Gateway endpoints (S3, DynamoDB) are FREE. Interface endpoints (~$7.20/mo each)
+# run in the private app subnets and need the vpce SG for ingress control.
+
+# Security group for Interface VPC Endpoints.
+# Ingress: 443/tcp from the VPC CIDR (covers app, lambda, and data tiers).
+# Egress: deny-all (endpoint ENIs only receive traffic, they don't initiate).
+resource "aws_security_group" "vpce" {
+  count = var.create_vpc_endpoints ? 1 : 0
+
+  name        = "${var.name}-${var.environment}-vpce-sg"
+  description = "VPC Endpoint tier: ingress 443 from VPC-internal traffic only"
+  vpc_id      = aws_vpc.this.id
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-vpce-sg"
+  })
+}
+
+resource "aws_security_group_rule" "vpce_ingress_vpc" {
+  count = var.create_vpc_endpoints ? 1 : 0
+
+  type              = "ingress"
+  security_group_id = aws_security_group.vpce[0].id
+  from_port         = 443
+  to_port           = 443
+  protocol          = "tcp"
+  cidr_blocks       = [var.vpc_cidr]
+  description       = "Ingress from VPC-internal traffic on HTTPS"
+}
+
+# A dedicated route table for private app subnets when NAT is disabled.
+# This is needed so the S3 gateway endpoint can propagate its prefix list routes
+# to the subnets where the Lambda functions live. When NAT is enabled, the
+# existing aws_route_table.private serves this purpose.
+resource "aws_route_table" "private_endpoints" {
+  count  = var.enable_nat_gateway ? 0 : 1
+  vpc_id = aws_vpc.this.id
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-rt-private-endpoints"
+  })
+}
+
+# When NAT is disabled, associate private_app subnets with the endpoints RT.
+resource "aws_route_table_association" "private_app_endpoints" {
+  count          = var.enable_nat_gateway ? 0 : var.az_count
+  subnet_id      = aws_subnet.private_app[count.index].id
+  route_table_id = aws_route_table.private_endpoints[0].id
+}
+
+# Gateway endpoint for S3 — FREE, no ENIs. Prefix list added to specified RTs.
+resource "aws_vpc_endpoint" "s3" {
+  count = var.create_vpc_endpoints ? 1 : 0
+
+  vpc_id            = aws_vpc.this.id
+  service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
+  vpc_endpoint_type = "Gateway"
+
+  route_table_ids = var.enable_nat_gateway ? aws_route_table.private[*].id : aws_route_table.private_endpoints[*].id
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-vpce-s3"
+  })
+}
+
+# Interface endpoints — one per service. All share the vpce SG and private_app subnets.
+locals {
+  vpce_services = {
+    sqs            = "com.amazonaws.${data.aws_region.current.name}.sqs"
+    sns            = "com.amazonaws.${data.aws_region.current.name}.sns"
+    logs           = "com.amazonaws.${data.aws_region.current.name}.logs"
+    secretsmanager = "com.amazonaws.${data.aws_region.current.name}.secretsmanager"
+    ssm            = "com.amazonaws.${data.aws_region.current.name}.ssm"
+    ecr_api        = "com.amazonaws.${data.aws_region.current.name}.ecr.api"
+    ecr_dkr        = "com.amazonaws.${data.aws_region.current.name}.ecr.dkr"
+  }
+}
+
+resource "aws_vpc_endpoint" "interface" {
+  for_each = var.create_vpc_endpoints ? local.vpce_services : {}
+
+  vpc_id              = aws_vpc.this.id
+  service_name        = each.value
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = aws_subnet.private_app[*].id
+  security_group_ids  = [aws_security_group.vpce[0].id]
+  private_dns_enabled = true
+
+  tags = merge(local.common_tags, {
+    Name = "${var.name}-${var.environment}-vpce-${each.key}"
+  })
 }
