@@ -17,13 +17,12 @@ async function main() {
   const PASSWORD = 'Pablo1234!';
   const FULL_NAME = 'Pablo Siquinajay';
 
-  const existingUsers = await db
+  const [existingUser] = await db
     .select({ id: users.id })
     .from(users)
     .where(eq(users.email, EMAIL))
     .limit(1);
 
-  const existingUser = existingUsers[0];
   let userId: number;
 
   if (existingUser) {
@@ -50,13 +49,11 @@ async function main() {
   const PLATE = 'P123ABC';
   const VEHICLE_TYPE = 'auto' as const;
 
-  const existingVehicles = await db
+  const existingVehicle = await db
     .select({ id: vehicles.id })
     .from(vehicles)
     .where(eq(vehicles.plateHash, plateHash(PLATE)))
     .limit(1);
-
-  const existingVehicle = existingVehicles[0];
 
   if (existingVehicle) {
     console.log(`[seed:test] Vehicle plate ${PLATE} already exists (id=${existingVehicle.id}). Skipping insert.`);

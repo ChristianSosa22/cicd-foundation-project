@@ -211,27 +211,9 @@ resource "aws_security_group_rule" "vpce_ingress_vpc" {
   description       = "Ingress from VPC-internal traffic on HTTPS"
 }
 
-# A dedicated route table for private app subnets when NAT is disabled.
-# This is needed so the S3 gateway endpoint can propagate its prefix list routes
-# to the subnets where the Lambda functions live. When NAT is enabled, the
-# existing aws_route_table.private serves this purpose.
-resource "aws_route_table" "private_endpoints" {
-  count  = var.enable_nat_gateway ? 0 : 1
-  vpc_id = aws_vpc.this.id
-
-  tags = merge(local.common_tags, {
-    Name = "${var.name}-${var.environment}-rt-private-endpoints"
-  })
-}
-
-# When NAT is disabled, associate private_app subnets with the endpoints RT.
-resource "aws_route_table_association" "private_app_endpoints" {
-  count          = var.enable_nat_gateway ? 0 : var.az_count
-  subnet_id      = aws_subnet.private_app[count.index].id
-  route_table_id = aws_route_table.private_endpoints[0].id
-}
-
 # Gateway endpoint for S3 — FREE, no ENIs. Prefix list added to specified RTs.
+# aws_route_table.private always exists (count = nat_count ≥ 1) even when
+# enable_nat_gateway=false, so we can always use it regardless of NAT config.
 resource "aws_vpc_endpoint" "s3" {
   count = var.create_vpc_endpoints ? 1 : 0
 
@@ -239,7 +221,7 @@ resource "aws_vpc_endpoint" "s3" {
   service_name      = "com.amazonaws.${data.aws_region.current.name}.s3"
   vpc_endpoint_type = "Gateway"
 
-  route_table_ids = var.enable_nat_gateway ? aws_route_table.private[*].id : aws_route_table.private_endpoints[*].id
+  route_table_ids = aws_route_table.private[*].id
 
   tags = merge(local.common_tags, {
     Name = "${var.name}-${var.environment}-vpce-s3"
