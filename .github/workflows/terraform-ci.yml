@@ -97,6 +97,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Pre-installs Lambda Layer deps so archive_file always reads a complete
+      # node_modules/. Without this, fresh CI checkouts where package.json hasn't
+      # changed would leave the null_resource trigger cold → zip is incomplete.
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -429,6 +436,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -570,6 +581,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
