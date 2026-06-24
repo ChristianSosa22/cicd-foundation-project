@@ -1,5 +1,6 @@
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import { Router } from 'express';
+import crypto from 'crypto';
 import { z } from 'zod';
 import { env } from '../../config/env';
 import { db } from '../../db';
@@ -7,14 +8,11 @@ import { parkingSpaces, reservations, settings, spaceAllowedCategory, spaceBlack
 import { decrypt } from '../../lib/crypto';
 import { conflict, forbidden, notFound, unprocessable } from '../../lib/errors';
 import { logger } from '../../lib/logger';
-import { generateReceiptPdf } from '../../lib/receipts';
-import { s3 } from '../../lib/s3';
 import { enqueueReceiptMessage } from '../../lib/sqs';
 import { presignGetReceipt } from '../../lib/s3';
 import { requireAuth, requireRole } from '../../middleware/auth';
 import { validate } from '../../middleware/validate';
 import { dateString, idParam } from '../common/validators';
-import { PutObjectCommand } from '@aws-sdk/client-s3';
 
 // POST /reservar (UC3, Fn1) — atomic create. 201; 409 double-book / one-active-per-day.
 export const reservarRouter: Router = Router();
@@ -83,7 +81,10 @@ reservarRouter.post(
       if (blackout) return next(conflict('El espacio no está disponible en esa fecha'));
 
       // 6. INSERT — partial unique indexes handle double-book + one-per-day → PG 23505 → 409
-      const confirmDeadline = new Date(Date.now() + 20 * 60 * 1000);
+      // NOTE: confirm_deadline set to 1 minute for class demonstration (not 20 min).
+      // This allows the EventBridge Scheduler (rate(1 minute)) to sweep expired
+      // reservations in real-time during the test.
+      const confirmDeadline = new Date(Date.now() + 1 * 60 * 1000);
       const [reservation] = await db
         .insert(reservations)
         .values({
@@ -96,29 +97,28 @@ reservarRouter.post(
         })
         .returning();
 
-      // 7. Receipt key is deterministic (receipts/<id>.pdf) so we can return it
-      //    in the 201 response immediately, while the PDF upload runs in the
-      //    background (fire-and-forget) without blocking the response.
-      const receiptKey = `receipts/${reservation.id}.pdf`;
-
-      if (env.S3_BUCKET) {
-        void (async () => {
-          try {
-            const [u] = await db.select({ fullName: users.fullName }).from(users).where(eq(users.id, userId)).limit(1);
-            const pdfBytes = await generateReceiptPdf({
-              reservationId: reservation.id,
-              spaceLabel: space.label,
-              vehicleType: space.vehicleType,
-              plate: decrypt(vehicle.plateEnc),
-              driverName: u?.fullName ?? '',
-              reservationDate: body.reservation_date,
-            });
-            await s3.send(new PutObjectCommand({ Bucket: env.S3_BUCKET, Key: receiptKey, Body: pdfBytes, ContentType: 'application/pdf' }));
-            await db.update(reservations).set({ receiptS3Key: receiptKey }).where(eq(reservations.id, reservation.id));
-          } catch (err) {
-            logger.error({ err }, '[reservar] receipt generation failed');
-          }
-        })();
+      // 7. Enqueue GenerateReceiptCommand to SQS (async receipt pipeline).
+      // The receipt-worker Lambda will generate the PDF, upload to S3, and
+      // publish ReceiptReadyEvent to SNS. The receipt_s3_key will be NULL
+      // until the worker completes (poll via GET /reservations/:id).
+      if (env.RECEIPT_QUEUE_URL) {
+        try {
+          const messageId = await enqueueReceiptMessage({
+            event_type: 'GenerateReceiptCommand',
+            idempotency_key: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            data: {
+              reservation_id: reservation.id,
+              user_id: userId,
+              space_id: body.space_id,
+              vehicle_id: body.vehicle_id,
+              reservation_date: body.reservation_date,
+            },
+          });
+          logger.info({ messageId, reservation_id: reservation.id }, '[reservar] enqueued GenerateReceiptCommand');
+        } catch (err) {
+          logger.error({ err }, '[reservar] SQS enqueue failed — receipt will not be generated');
+        }
       }
 
       res.status(201).json({
@@ -128,7 +128,7 @@ reservarRouter.post(
         reservation_date: reservation.reservationDate,
         status: reservation.status,
         confirm_deadline: reservation.confirmDeadline,
-        receipt_s3_key: receiptKey,
+        receipt_s3_key: null,
       });
     } catch (err) {
       next(err);

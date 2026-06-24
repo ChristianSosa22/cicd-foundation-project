@@ -17,3 +17,8 @@ output "db_security_group_id" {
   description = "ID of the database tier security group (RDS, ingress from app-sg only)."
   value       = aws_security_group.db.id
 }
+
+output "lambda_security_group_id" {
+  description = "ID of the Lambda tier security group (receipt/release workers, egress to RDS + VPC Endpoints)."
+  value       = aws_security_group.lambda.id
+}

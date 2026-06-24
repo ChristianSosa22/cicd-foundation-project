@@ -1,17 +1,25 @@
 ﻿# ── IAM Module Evidence ────────────────────────────────────────────────────────
-# Generated: 2026-06-21
+# Generated: 2026-06-21 | Updated: 2026-06-22 (Delivery 5 — VPC Endpoints + Lambdas)
 # Source: terraform state list | grep "module\.iam\."
 #
 # 7 IAM roles (no wildcards, least-privilege):
 #   - compute_exec:      ECS task execution (ECR pull, CloudWatch logs, SSM/Secrets)
 #   - compute_task:      ECS task role (S3, SQS, RDS, KMS)
-#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, EC2 for VPC ENI)
-#   - async_release:     Lambda release-worker (SQS, Secrets, EC2 for VPC ENI)
-#   - async_email:       Lambda email-worker (SQS, Secrets)
+#   - async_receipt:     Lambda receipt-worker (SQS, S3, SNS, Secrets, SSM, KMS, EC2 VPC ENI)
+#   - async_release:     Lambda release-worker (SQS, Secrets, KMS, EC2 VPC ENI)
+#   - async_email:       Lambda email-worker (SQS, SES, S3, KMS)
 #   - scheduler:         EventBridge Scheduler (SQS SendMessage)
 #   - ci_runner:         GitHub Actions OIDC (Terraform plan/apply)
 #
 # 1 SNS topic (ReceiptReadyEvent) + 1 subscription (email queue fan-out)
+#
+# NEW in Delivery 5:
+#   - async_receipt_ssm:  ssm:GetParameter (ENCRYPTION_KEY + HMAC_KEY)
+#   - async_receipt_kms:  kms:Decrypt + kms:GenerateDataKey
+#   - async_release_kms:  kms:Decrypt + kms:GenerateDataKey
+#   - async_email_ses:    ses:SendEmail + ses:SendRawEmail
+#   - async_email_s3:     s3:GetObject (presigned URL generation)
+#   - async_email_kms:    kms:Decrypt + kms:GenerateDataKey
 
 module.iam.data.aws_caller_identity.this
 module.iam.aws_iam_role.async_consumer_email
@@ -21,16 +29,22 @@ module.iam.aws_iam_role.ci_runner
 module.iam.aws_iam_role.compute_exec
 module.iam.aws_iam_role.compute_task
 module.iam.aws_iam_role.scheduler
+module.iam.aws_iam_role_policy.async_email_kms
 module.iam.aws_iam_role_policy.async_email_logs
+module.iam.aws_iam_role_policy.async_email_s3
 module.iam.aws_iam_role_policy.async_email_secrets
+module.iam.aws_iam_role_policy.async_email_ses
 module.iam.aws_iam_role_policy.async_email_sqs
 module.iam.aws_iam_role_policy.async_receipt_ec2
+module.iam.aws_iam_role_policy.async_receipt_kms
 module.iam.aws_iam_role_policy.async_receipt_logs
 module.iam.aws_iam_role_policy.async_receipt_s3
 module.iam.aws_iam_role_policy.async_receipt_secrets
 module.iam.aws_iam_role_policy.async_receipt_sns
 module.iam.aws_iam_role_policy.async_receipt_sqs
+module.iam.aws_iam_role_policy.async_receipt_ssm
 module.iam.aws_iam_role_policy.async_release_ec2
+module.iam.aws_iam_role_policy.async_release_kms
 module.iam.aws_iam_role_policy.async_release_logs
 module.iam.aws_iam_role_policy.async_release_secrets
 module.iam.aws_iam_role_policy.async_release_sqs
@@ -42,7 +56,6 @@ module.iam.aws_iam_role_policy.compute_task_rds
 module.iam.aws_iam_role_policy.compute_task_s3
 module.iam.aws_iam_role_policy.compute_task_secretsmanager
 module.iam.aws_iam_role_policy.compute_task_sqs
-module.iam.aws_iam_role_policy.scheduler_sqs
 module.iam.aws_iam_role_policy_attachment.compute_exec_managed
 module.iam.aws_sns_topic.receipt_ready
 module.iam.aws_sns_topic_subscription.email_queue
@@ -71,3 +84,21 @@ scheduler_role_arn = "arn:aws:iam::733202870569:role/oyd-project-dev-iam-schedul
 module.lambda.aws_lambda_function.receipt_worker  → role = module.iam.async_receipt_role_arn
 module.lambda.aws_lambda_function.release_worker  → role = module.iam.async_release_role_arn
 module.lambda.aws_lambda_function.email_worker    → role = module.iam.async_email_role_arn
+
+# ── Delivery 5: New IAM Permissions ───────────────────────────────────────────
+#
+# receipt-worker extra permissions:
+#   ssm:GetParameter     → /oyd-project/dev/ENCRYPTION_KEY, /oyd-project/dev/HMAC_KEY
+#   kms:Decrypt          → CMK (for decrypting SSM params and Secrets Manager secret)
+#   kms:GenerateDataKey  → CMK (for S3 SSE-KMS PutObject)
+#
+# release-worker extra permissions:
+#   kms:Decrypt          → CMK (for decrypting Secrets Manager secret)
+#   kms:GenerateDataKey  → CMK (for decrypting Secrets Manager secret)
+#
+# email-worker extra permissions:
+#   ses:SendEmail        → * (SES does not support resource-scoping)
+#   ses:SendRawEmail     → * (required for attachments)
+#   s3:GetObject         → arn:aws:s3:::<bucket>/* (presigned URL generation)
+#   kms:Decrypt          → CMK
+#   kms:GenerateDataKey  → CMK

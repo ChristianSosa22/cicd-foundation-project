@@ -48,3 +48,8 @@ variable "allowed_ingress_cidrs" {
   type        = list(string)
   default     = ["0.0.0.0/0"]
 }
+
+variable "vpce_security_group_id" {
+  description = "ID of the VPC Endpoints security group. Used by the lambda SG to allow egress to VPC Endpoints."
+  type        = string
+}

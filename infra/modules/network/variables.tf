@@ -89,3 +89,9 @@ variable "ephemeral_to" {
   type        = number
   default     = 65535
 }
+
+variable "create_vpc_endpoints" {
+  description = "When true, provisions Gateway VPC Endpoints (S3) and Interface VPC Endpoints (SQS, SNS, Logs, SecretsManager, SSM, ECR) in the private app subnets. The SG is created internally in this module."
+  type        = bool
+  default     = true
+}
