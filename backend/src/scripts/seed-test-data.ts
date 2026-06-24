@@ -49,7 +49,7 @@ async function main() {
   const PLATE = 'P123ABC';
   const VEHICLE_TYPE = 'auto' as const;
 
-  const existingVehicle = await db
+  const [existingVehicle] = await db
     .select({ id: vehicles.id })
     .from(vehicles)
     .where(eq(vehicles.plateHash, plateHash(PLATE)))
