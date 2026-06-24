@@ -111,13 +111,36 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
+      # Detects if the live S3 endpoint still references a route table that was
+      # already destroyed (e.g. old private_endpoints RT removed in ae65e57).
+      # When detected, it outputs -replace so the plan step forces recreation.
+      # This check is self-healing: after one successful replacement, subsequent
+      # runs find all RTs valid and skip the flag.
+      - name: Check S3 endpoint route tables
+        id: s3check
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          REPLACE=""
+          if terraform state show "module.network.aws_vpc_endpoint.s3[0]" &>/dev/null; then
+            ROUTE_TABLES=$(terraform state show "module.network.aws_vpc_endpoint.s3[0]" | sed -n '/route_table_ids/,/]/p' | grep -oP 'rtb-[a-z0-9]+' || true)
+            for rt in $ROUTE_TABLES; do
+              if ! aws ec2 describe-route-tables --route-table-ids "$rt" --region "$AWS_REGION" &>/dev/null; then
+                echo "Stale route table $rt no longer exists, forcing S3 endpoint recreation"
+                REPLACE="-replace=module.network.aws_vpc_endpoint.s3[0]"
+                break
+              fi
+            done
+          fi
+          echo "replace_flag=$REPLACE" >> $GITHUB_OUTPUT
+
       # Saves the plan to a binary file (tfplan) so the apply job can replay the
       # EXACT reviewed plan, and streams the human-readable diff to plan.txt for
       # the PR comment. The same db_password is baked into tfplan at plan time.
       - name: Terraform Plan
         env:
           TF_VAR_db_password: ${{ secrets.DEV_DB_PASSWORD }}
-        run: terraform plan -out=tfplan -input=false -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
 
       # Promotes the exact plan to deploy-dev as a workflow artifact. deploy-dev
       # downloads this same tfplan and runs `terraform apply tfplan` — never a re-plan.
@@ -420,12 +443,30 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/staging/backend-staging.hcl
 
+      - name: Check S3 endpoint route tables
+        id: s3check
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          REPLACE=""
+          if terraform state show "module.network.aws_vpc_endpoint.s3[0]" &>/dev/null; then
+            ROUTE_TABLES=$(terraform state show "module.network.aws_vpc_endpoint.s3[0]" | sed -n '/route_table_ids/,/]/p' | grep -oP 'rtb-[a-z0-9]+' || true)
+            for rt in $ROUTE_TABLES; do
+              if ! aws ec2 describe-route-tables --route-table-ids "$rt" --region "$AWS_REGION" &>/dev/null; then
+                echo "Stale route table $rt no longer exists, forcing S3 endpoint recreation"
+                REPLACE="-replace=module.network.aws_vpc_endpoint.s3[0]"
+                break
+              fi
+            done
+          fi
+          echo "replace_flag=$REPLACE" >> $GITHUB_OUTPUT
+
       # Plan and apply the saved plan in the same job (same state, no drift
       # window): generate tfplan, then `terraform apply tfplan` — no -auto-approve.
       - name: Terraform Plan
         env:
           TF_VAR_db_password: ${{ secrets.STAGING_DB_PASSWORD }}
-        run: terraform plan -out=tfplan -input=false -var-file=envs/staging/staging.tfvars
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/staging/staging.tfvars
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -544,10 +585,28 @@ jobs:
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/prod/backend-prod.hcl
 
+      - name: Check S3 endpoint route tables
+        id: s3check
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          REPLACE=""
+          if terraform state show "module.network.aws_vpc_endpoint.s3[0]" &>/dev/null; then
+            ROUTE_TABLES=$(terraform state show "module.network.aws_vpc_endpoint.s3[0]" | sed -n '/route_table_ids/,/]/p' | grep -oP 'rtb-[a-z0-9]+' || true)
+            for rt in $ROUTE_TABLES; do
+              if ! aws ec2 describe-route-tables --route-table-ids "$rt" --region "$AWS_REGION" &>/dev/null; then
+                echo "Stale route table $rt no longer exists, forcing S3 endpoint recreation"
+                REPLACE="-replace=module.network.aws_vpc_endpoint.s3[0]"
+                break
+              fi
+            done
+          fi
+          echo "replace_flag=$REPLACE" >> $GITHUB_OUTPUT
+
       # Plan and apply the saved plan in the same job (same state, no drift
       # window): generate tfplan, then `terraform apply tfplan` — no -auto-approve.
       - name: Terraform Plan
-        run: terraform plan -out=tfplan -input=false -var-file=envs/prod/prod.tfvars
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/prod/prod.tfvars
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
