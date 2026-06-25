@@ -2,19 +2,18 @@ data "aws_caller_identity" "current" {}
 data "aws_region" "current" {}
 
 locals {
-  prefix           = "${var.project_name}-${var.environment}"
-  account_id       = data.aws_caller_identity.current.account_id
-  compute_exec_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-exec"
-  compute_task_arn = "arn:aws:iam::${local.account_id}:role/${local.prefix}-iam-compute-task"
-  worker_task_arn  = "arn:aws:iam::${local.account_id}:role/${local.prefix}-worker-task-role"
-  ci_runner_arn    = "arn:aws:iam::${local.account_id}:role/gha-deploy-${var.environment}"
+  account_id = data.aws_caller_identity.current.account_id
 }
 
 resource "aws_kms_key" "main" {
-  description             = "CMK for ${local.prefix}: encrypts S3 and RDS"
+  description             = "CMK for ${var.project_name}-${var.environment}: encrypts S3 and RDS"
   deletion_window_in_days = var.key_deletion_window_in_days
   enable_key_rotation     = true
 
+  # Bootstrap policy: only always-valid principals (root account + AWS service principals).
+  # Role-based grants (compute, CI runner) are applied after those roles exist via
+  # aws_kms_key_policy in the root module, which avoids MalformedPolicyDocumentException
+  # on a fresh apply when the IAM roles don't exist yet.
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
@@ -31,8 +30,6 @@ resource "aws_kms_key" "main" {
       },
       {
         # Key administration only — no cryptographic usage actions.
-        # Root can rotate, disable, schedule deletion, and manage grants,
-        # but cannot use the key for encrypt/decrypt operations directly.
         Sid    = "KeyAdministration"
         Effect = "Allow"
         Principal = {
@@ -53,26 +50,6 @@ resource "aws_kms_key" "main" {
           "kms:CancelKeyDeletion",
           "kms:TagResource",
           "kms:UntagResource"
-        ]
-        Resource = "*"
-      },
-      {
-        # Cryptographic usage restricted to the ECS execution role
-        # (pulls secrets at container start), the ECS task role (app runtime),
-        # and the worker task role (writes SSE-KMS objects to S3).
-        Sid    = "ComputeRoleUsage"
-        Effect = "Allow"
-        Principal = {
-          AWS = [
-            local.compute_exec_arn,
-            local.compute_task_arn,
-            local.worker_task_arn
-          ]
-        }
-        Action = [
-          "kms:Decrypt",
-          "kms:GenerateDataKey",
-          "kms:DescribeKey"
         ]
         Resource = "*"
       },
@@ -118,23 +95,6 @@ resource "aws_kms_key" "main" {
         }
       },
       {
-        # CI runner (OIDC role) needs encrypt/decrypt to create and update
-        # SSM parameters and Secrets Manager secrets with this CMK during apply.
-        Sid    = "CIRunnerUsage"
-        Effect = "Allow"
-        Principal = {
-          AWS = local.ci_runner_arn
-        }
-        Action = [
-          "kms:Encrypt",
-          "kms:Decrypt",
-          "kms:ReEncrypt*",
-          "kms:GenerateDataKey*",
-          "kms:DescribeKey"
-        ]
-        Resource = "*"
-      },
-      {
         # S3 service principal: generate data keys for SSE-KMS object encryption.
         Sid    = "S3ServiceUsage"
         Effect = "Allow"
@@ -157,6 +117,12 @@ resource "aws_kms_key" "main" {
       }
     ]
   })
+
+  # Prevent Terraform from fighting the standalone aws_kms_key_policy (root module)
+  # which overwrites this policy with the full set of principals after roles exist.
+  lifecycle {
+    ignore_changes = [policy]
+  }
 
   tags = {
     Name        = var.kms_key_alias

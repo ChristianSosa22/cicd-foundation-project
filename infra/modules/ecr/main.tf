@@ -1,7 +1,8 @@
 # ECR repository for the API service (Node/Express backend, port 8080)
 resource "aws_ecr_repository" "api" {
-  name                 = "${var.name}-api"
+  name                 = "${var.name}-${var.environment}-api"
   image_tag_mutability = var.image_tag_mutability
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -21,8 +22,9 @@ resource "aws_ecr_repository" "api" {
 
 # ECR repository for the web frontend service (Next.js standalone, port 3000)
 resource "aws_ecr_repository" "web" {
-  name                 = "${var.name}-web"
+  name                 = "${var.name}-${var.environment}-web"
   image_tag_mutability = var.image_tag_mutability
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true

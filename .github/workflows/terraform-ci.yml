@@ -160,6 +160,18 @@ jobs:
           retention-days: 5
           if-no-files-found: error
 
+      # The layer zip is generated on-runner by archive_file during plan.
+      # deploy-dev runs on a fresh checkout and can't re-run archive_file
+      # (saved-plan apply skips data sources), so we pass the zip across
+      # as an artifact — same mechanism as tfplan.
+      - name: Upload Lambda layer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-layer-dev
+          path: infra/modules/lambda/layer/receipt-layer.zip
+          retention-days: 5
+          if-no-files-found: error
+
       - name: Post plan as PR comment
         uses: actions/github-script@v7
         continue-on-error: true
@@ -210,26 +222,6 @@ jobs:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
-      - name: Build & push API image to ECR
-        env:
-          AWS_REGION: ${{ vars.AWS_REGION }}
-        run: |
-          ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-          API_REPO="${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/oyd-project-api"
-
-          echo "Logging in to ECR..."
-          aws ecr get-login-password --region "$AWS_REGION" | \
-            docker login --username AWS --password-stdin "${ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
-
-          echo "Building backend API image..."
-          docker build -t parking-api:latest ../backend
-
-          echo "Tagging and pushing to ECR..."
-          docker tag parking-api:latest "${API_REPO}:latest"
-          docker push "${API_REPO}:latest"
-
-          echo "API image pushed to ${API_REPO}:latest"
-
       # Locate the plan run for this PR's head SHA (the plan job runs in a
       # separate workflow run triggered by the PR, so its artifact is cross-run).
       - name: Find PR plan run
@@ -263,6 +255,17 @@ jobs:
           run-id: ${{ steps.planrun.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      # Restore the layer zip from the plan run so that aws_lambda_layer_version.receipt
+      # can read it at apply time. archive_file does not re-run during a saved-plan apply,
+      # and the zip is gitignored, so we must pass it explicitly via artifact.
+      - name: Download Lambda layer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: receipt-layer-dev
+          path: infra/modules/lambda/layer
+          run-id: ${{ steps.planrun.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
 
@@ -270,6 +273,64 @@ jobs:
       # plan was generated ("saved plan is stale") — the intended safety guard.
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
+
+      # Build and push the API image AFTER apply so the ECR repository is
+      # guaranteed to exist (Terraform creates/recreates it in the step above).
+      # This survives the repo being deleted out-of-band in AWS: apply restores
+      # it, then we push. The repo URL is read from the Terraform output rather
+      # than hardcoded, so it always matches the repo the ECS task pulls from
+      # (oyd-project-<env>-api).
+      - name: Build & push API image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          API_REPO=$(terraform output -raw ecr_api_repository_url)
+          REGISTRY="${API_REPO%%/*}"
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building backend API image..."
+          docker build -t parking-api:latest ../backend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-api:latest "${API_REPO}:latest"
+          docker push "${API_REPO}:latest"
+
+          echo "API image pushed to ${API_REPO}:latest"
+
+      # Build and push the web (Next.js) image too — same reasoning as the API
+      # image. Without this, terraform recreates an empty oyd-project-<env>-web
+      # repo and the web service can never pull an image, so the ECS rollout
+      # hangs in "wait services-stable". NEXT_PUBLIC_API_URL is baked in at build
+      # time (Next.js inlines it into the client bundle); the ALB serves web and
+      # API on the same origin, so it is the app's public URL — HTTPS when TLS is
+      # enabled, otherwise the ALB's HTTP URL.
+      - name: Build & push web image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          WEB_REPO=$(terraform output -raw ecr_web_repository_url)
+          REGISTRY="${WEB_REPO%%/*}"
+
+          APP_URL=$(terraform output -raw alb_https_url)
+          if [ -z "$APP_URL" ]; then
+            APP_URL=$(terraform output -raw alb_url)
+          fi
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building web image (NEXT_PUBLIC_API_URL=$APP_URL)..."
+          docker build --build-arg NEXT_PUBLIC_API_URL="$APP_URL" -t parking-web:latest ../frontend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-web:latest "${WEB_REPO}:latest"
+          docker push "${WEB_REPO}:latest"
+
+          echo "Web image pushed to ${WEB_REPO}:latest"
 
       - name: Migrate database (ECS run-task inside the VPC)
         # Applies any pending Drizzle migration files (drizzle/migrations/) that
@@ -498,6 +559,64 @@ jobs:
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
 
+      # Build and push the API image AFTER apply so the ECR repository is
+      # guaranteed to exist (Terraform creates/recreates it in the step above).
+      # This survives the repo being deleted out-of-band in AWS: apply restores
+      # it, then we push. The repo URL is read from the Terraform output rather
+      # than hardcoded, so it always matches the repo the ECS task pulls from
+      # (oyd-project-<env>-api).
+      - name: Build & push API image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          API_REPO=$(terraform output -raw ecr_api_repository_url)
+          REGISTRY="${API_REPO%%/*}"
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building backend API image..."
+          docker build -t parking-api:latest ../backend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-api:latest "${API_REPO}:latest"
+          docker push "${API_REPO}:latest"
+
+          echo "API image pushed to ${API_REPO}:latest"
+
+      # Build and push the web (Next.js) image too — same reasoning as the API
+      # image. Without this, terraform recreates an empty oyd-project-<env>-web
+      # repo and the web service can never pull an image, so the ECS rollout
+      # hangs in "wait services-stable". NEXT_PUBLIC_API_URL is baked in at build
+      # time (Next.js inlines it into the client bundle); the ALB serves web and
+      # API on the same origin, so it is the app's public URL — HTTPS when TLS is
+      # enabled, otherwise the ALB's HTTP URL.
+      - name: Build & push web image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          WEB_REPO=$(terraform output -raw ecr_web_repository_url)
+          REGISTRY="${WEB_REPO%%/*}"
+
+          APP_URL=$(terraform output -raw alb_https_url)
+          if [ -z "$APP_URL" ]; then
+            APP_URL=$(terraform output -raw alb_url)
+          fi
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building web image (NEXT_PUBLIC_API_URL=$APP_URL)..."
+          docker build --build-arg NEXT_PUBLIC_API_URL="$APP_URL" -t parking-web:latest ../frontend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-web:latest "${WEB_REPO}:latest"
+          docker push "${WEB_REPO}:latest"
+
+          echo "Web image pushed to ${WEB_REPO}:latest"
+
       - name: Migrate database (ECS run-task inside the VPC)
         # Same as dev/prod: applies pending Drizzle migrations, waits, and fails
         # the pipeline on non-zero exit. No seed step — staging is production-like.
@@ -648,6 +767,64 @@ jobs:
 
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
+
+      # Build and push the API image AFTER apply so the ECR repository is
+      # guaranteed to exist (Terraform creates/recreates it in the step above).
+      # This survives the repo being deleted out-of-band in AWS: apply restores
+      # it, then we push. The repo URL is read from the Terraform output rather
+      # than hardcoded, so it always matches the repo the ECS task pulls from
+      # (oyd-project-<env>-api).
+      - name: Build & push API image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          API_REPO=$(terraform output -raw ecr_api_repository_url)
+          REGISTRY="${API_REPO%%/*}"
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building backend API image..."
+          docker build -t parking-api:latest ../backend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-api:latest "${API_REPO}:latest"
+          docker push "${API_REPO}:latest"
+
+          echo "API image pushed to ${API_REPO}:latest"
+
+      # Build and push the web (Next.js) image too — same reasoning as the API
+      # image. Without this, terraform recreates an empty oyd-project-<env>-web
+      # repo and the web service can never pull an image, so the ECS rollout
+      # hangs in "wait services-stable". NEXT_PUBLIC_API_URL is baked in at build
+      # time (Next.js inlines it into the client bundle); the ALB serves web and
+      # API on the same origin, so it is the app's public URL — HTTPS when TLS is
+      # enabled, otherwise the ALB's HTTP URL.
+      - name: Build & push web image to ECR
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          WEB_REPO=$(terraform output -raw ecr_web_repository_url)
+          REGISTRY="${WEB_REPO%%/*}"
+
+          APP_URL=$(terraform output -raw alb_https_url)
+          if [ -z "$APP_URL" ]; then
+            APP_URL=$(terraform output -raw alb_url)
+          fi
+
+          echo "Logging in to ECR..."
+          aws ecr get-login-password --region "$AWS_REGION" | \
+            docker login --username AWS --password-stdin "$REGISTRY"
+
+          echo "Building web image (NEXT_PUBLIC_API_URL=$APP_URL)..."
+          docker build --build-arg NEXT_PUBLIC_API_URL="$APP_URL" -t parking-web:latest ../frontend
+
+          echo "Tagging and pushing to ECR..."
+          docker tag parking-web:latest "${WEB_REPO}:latest"
+          docker push "${WEB_REPO}:latest"
+
+          echo "Web image pushed to ${WEB_REPO}:latest"
 
       - name: Migrate database (ECS run-task inside the VPC)
         # Same as dev: applies pending Drizzle migrations, waits, and fails the
