@@ -25,3 +25,6 @@ modules/compute/lambda_placeholder.zip
 # Worker image: local node_modules if deps are installed outside Docker
 # (the image is built by CI via worker/Dockerfile; package-lock.json is tracked)
 modules/lambda/worker/node_modules/
+# The root .gitignore ignores package-lock.json globally; the worker lockfile is
+# required by `npm ci` in the Docker build, so keep it tracked.
+!modules/lambda/worker/package-lock.json
