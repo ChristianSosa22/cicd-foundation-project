@@ -9,7 +9,7 @@ on:
     types: [opened, synchronize, reopened, closed]
     branches:
       - main
-  # DELIVERY J — Slack /deploy <environment> bot triggers this entry point.
+  # Slack /deploy <environment> bot triggers this entry point.
   workflow_dispatch:
     inputs:
       environment:
@@ -901,7 +901,7 @@ jobs:
           done
           echo "All services rolled onto latest task definitions."
 
-  # DELIVERY J — Bot-triggered deploy (workflow_dispatch from Slack /deploy command)
+  # Bot-triggered deploy (workflow_dispatch from Slack /deploy command)
   # ── Same pipeline as the PR-merge deploy jobs, entered via workflow_dispatch ──
   # Idempotency: terraform apply is idempotent (exit 0 with no changes on a second
   # run), and concurrency.cancel-in-progress=false means a second /deploy never
