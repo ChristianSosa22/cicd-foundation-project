@@ -529,3 +529,93 @@ $ aws acm describe-certificate --certificate-arn arn:aws:acm:us-east-1:733202870
 ```
 
 La evidencia completa se encuentra en [`evidence/tls-curl.txt`](evidence/tls-curl.txt).
+
+### Secrets Manager & KMS Integration
+
+#### `terraform output` — secrets-kms.txt
+
+El archivo [`evidence/secrets-kms.txt`](evidence/secrets-kms.txt) fue generado con:
+
+```bash
+cd infra/
+terraform output > evidence/secrets-kms.txt
+```
+
+Los outputs relevantes de este deliverable son:
+
+| Output | Descripción |
+|---|---|
+| `kms_key_arn` | ARN del CMK que cifra S3 y RDS |
+| `kms_key_id` | Key ID del CMK |
+| `kms_alias_arn` | ARN del alias `alias/oyd-project-dev-cmk` |
+| `kms_alias_name` | Nombre completo del alias |
+| `db_password_secret_arn` | ARN del secret en Secrets Manager con la contraseña de RDS |
+| `db_password_secret_name` | Nombre del secret (`/oyd-project/dev/db_password`) |
+
+#### Secrets Manager Console
+
+![Secret db_password visible en AWS Secrets Manager](evidence/secrets-console.png)
+
+> Captura de la consola de AWS Secrets Manager mostrando el secret `db_password`
+> provisionado por Terraform, cifrado con el CMK de KMS del proyecto.
+
+### Full IaC Coverage Proof
+
+#### IaC Coverage Document
+
+El documento [`docs/iac-coverage.md`](docs/iac-coverage.md) contiene:
+
+- Confirmación de que ningún recurso fue creado manualmente fuera de Terraform
+- Historial de `terraform import` (ninguno ejecutado en todo el proyecto)
+- Tabla de mapeo completa: todos los componentes de la aplicación → servicio cloud → tipo de recurso Terraform → módulo propietario
+
+#### Terraform State List
+
+El archivo [`evidence/state-list.txt`](evidence/state-list.txt) fue generado con:
+
+```bash
+cd infra/
+terraform state list > evidence/state-list.txt
+```
+
+150 recursos en state, cubriendo las 7 categorías requeridas:
+
+| Categoría | Ejemplo en state |
+|---|---|
+| Compute | `module.compute.aws_ecs_service.api` |
+| Storage | `module.storage.aws_s3_bucket.this` |
+| Database | `module.database.aws_db_instance.default` |
+| Networking | `module.network.aws_vpc.this` |
+| Async | `module.async_receipt.aws_sqs_queue.main` |
+| Security / IAM | `module.iam.aws_iam_role.compute_exec` |
+| Observability | `module.observability.aws_cloudwatch_metric_alarm.api_5xx` |
+
+#### Deployed Application Components
+
+![ECS services running — api-svc, web-svc, worker-svc](evidence/deployed-components.png)
+
+> Capturado desde **AWS Console → ECS → Clusters → oyd-project-dev-cluster → Services**,
+> mostrando los tres servicios (`api-svc`, `web-svc`, `worker-svc`) en estado ACTIVE con
+> tasks en ejecución.
+
+### Slack Deployment Bot
+
+#### Bot command invocation
+
+![Comando /deploy dev en Slack mostrando la confirmación del bot con el run URL](evidence/bot-command.png)
+
+> Canal de Slack mostrando la invocación del comando `/deploy dev` y la respuesta del bot
+> en formato Block Kit, con el nombre del ambiente, el timestamp del trigger y el enlace
+> al run de GitHub Actions.
+
+#### GitHub Actions pipeline run triggered by bot
+
+![Run de GitHub Actions disparado por el bot mostrando todos los jobs completados](evidence/bot-pipeline-run.png)
+
+> GitHub Actions → `terraform-ci.yml`, run disparado vía `workflow_dispatch` usando el
+> GitHub token del bot (no por un push directo). Muestra el job `deploy-manual`
+> completado exitosamente para el ambiente solicitado.
+
+#### Bot repository
+
+**[analopez-24/deploy-bot](https://github.com/analopez-24/deploy-bot)** — código fuente del bot de Slack, instrucciones de deployment en Lambda y documentación de secrets requeridos.
