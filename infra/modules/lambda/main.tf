@@ -36,8 +36,9 @@ resource "null_resource" "build_receipt_layer" {
 
 data "archive_file" "receipt_layer" {
   type        = "zip"
-  source_dir  = "${path.module}/layer/nodejs"
+  source_dir  = "${path.module}/layer"
   output_path = "${path.module}/layer/receipt-layer.zip"
+  excludes    = ["nodejs/node_modules/.cache", "receipt-layer.zip"]
 }
 
 resource "aws_lambda_layer_version" "receipt" {
