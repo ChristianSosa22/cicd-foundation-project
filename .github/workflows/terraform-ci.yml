@@ -992,7 +992,7 @@ jobs:
   # cancels an in-flight run — both runs queue and apply safely.
   deploy-manual:
     if: github.event_name == 'workflow_dispatch'
-    name: Deploy → ${{ github.event.inputs.environment }} (bot)
+    name: Deploy via Slack bot
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     concurrency:
