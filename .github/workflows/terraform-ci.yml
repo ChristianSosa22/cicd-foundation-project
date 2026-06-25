@@ -98,19 +98,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Pre-installs Lambda Layer deps so archive_file always reads a complete
-      # node_modules/. Without this, fresh CI checkouts where package.json hasn't
-      # changed would leave the null_resource trigger cold → zip is incomplete.
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
-
-      - name: Zip Lambda Layer
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zip
-          zip -r receipt-layer.zip nodejs/
-        working-directory: infra/modules/lambda/layer
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -121,6 +108,18 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      # The worker Lambdas run a container image. We bake the stable repo:tag URI
+      # into the plan; deploy-dev pushes that tag before applying, so the image
+      # exists when the (first-ever) function is created. image_uri is
+      # ignore_changes, so this value never causes drift on existing functions.
+      - name: Resolve worker image URI
+        id: worker
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ACCOUNT=$(aws sts get-caller-identity --query Account --output text)
+          echo "image_uri=${ACCOUNT}.dkr.ecr.${AWS_REGION}.amazonaws.com/oyd-project-dev-workers:latest" >> "$GITHUB_OUTPUT"
 
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
@@ -154,31 +153,17 @@ jobs:
       - name: Terraform Plan
         env:
           TF_VAR_db_password: ${{ secrets.DEV_DB_PASSWORD }}
-        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/dev/dev.tfvars -no-color 2>&1 | tee plan.txt
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/dev/dev.tfvars -var="worker_image=${{ steps.worker.outputs.image_uri }}" -no-color 2>&1 | tee plan.txt
 
       # Promotes the exact plan to deploy-dev as a workflow artifact. deploy-dev
       # downloads this same tfplan and runs `terraform apply tfplan` — never a re-plan.
-      # The Lambda Layer zip is also uploaded because `terraform apply tfplan` still
-      # needs the physical zip to upload to AWS — it is NOT baked into the tfplan.
+      # The worker image is NOT passed as an artifact: it lives in ECR (built and
+      # pushed by deploy-dev before apply), referenced by the URI baked into tfplan.
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-dev
-          path: |
-            infra/tfplan
-            infra/modules/lambda/layer/receipt-layer.zip
-          retention-days: 5
-          if-no-files-found: error
-
-      # The layer zip is generated on-runner by archive_file during plan.
-      # deploy-dev runs on a fresh checkout and can't re-run archive_file
-      # (saved-plan apply skips data sources), so we pass the zip across
-      # as an artifact — same mechanism as tfplan.
-      - name: Upload Lambda layer artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: receipt-layer-dev
-          path: infra/modules/lambda/layer/receipt-layer.zip
+          path: infra/tfplan
           retention-days: 5
           if-no-files-found: error
 
@@ -220,18 +205,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # Build node_modules on THIS runner too, not just in the plan job. The
-      # saved plan downloads receipt-layer.zip as an artifact, but archive_file
-      # is a data source that re-zips layer/ as a side effect if Terraform reads
-      # it during apply. On this fresh checkout layer/nodejs has only
-      # package.json, so a re-read would overwrite the good zip with an empty one
-      # and publish a layer without 'pg'. Having node_modules on disk makes the
-      # layer correct whether or not archive_file re-runs — same guarantee the
-      # staging/prod jobs rely on.
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
@@ -277,16 +250,17 @@ jobs:
           run-id: ${{ steps.planrun.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      # Restore the layer zip from the plan run so that aws_lambda_layer_version.receipt
-      # can read it at apply time. archive_file does not re-run during a saved-plan apply,
-      # and the zip is gitignored, so we must pass it explicitly via artifact.
-      - name: Download Lambda layer artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: receipt-layer-dev
-          path: infra/modules/lambda/layer
-          run-id: ${{ steps.planrun.outputs.run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+      # Build & push the worker image BEFORE apply: the saved plan creates the
+      # (first-ever) image-based Lambda from oyd-project-dev-workers:latest, which
+      # Lambda validates at create time, so the tag must already exist in ECR.
+      # On subsequent deploys the functions already exist and ignore_changes keeps
+      # apply from touching image_uri — the real rollout happens in "Roll worker
+      # functions" below. The script also creates the ECR repo if missing.
+      - name: Build & push worker image
+        id: worker
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: ./modules/lambda/worker/push-image.sh dev "$AWS_REGION" >> "$GITHUB_OUTPUT"
 
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/dev/backend-dev.hcl
@@ -295,6 +269,19 @@ jobs:
       # plan was generated ("saved plan is stale") — the intended safety guard.
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
+
+      # Roll the worker functions onto the exact image just pushed (by digest).
+      # Terraform only sets image_uri at create (ignore_changes), so CI drives the
+      # rollout — the Lambda analogue of forcing a new ECS task definition.
+      - name: Roll worker Lambdas
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ./modules/lambda/worker/roll-functions.sh "$AWS_REGION" \
+            "${{ steps.worker.outputs.image_uri }}" \
+            "$(terraform output -raw lambda_receipt_worker_name)" \
+            "$(terraform output -raw lambda_release_worker_name)" \
+            "$(terraform output -raw lambda_email_worker_name)"
 
       # Build and push the API image AFTER apply so the ECR repository is
       # guaranteed to exist (Terraform creates/recreates it in the step above).
@@ -555,16 +542,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
-
-      - name: Zip Lambda Layer
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zip
-          zip -r receipt-layer.zip nodejs/
-        working-directory: infra/modules/lambda/layer
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -575,6 +552,15 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      # Build & push the shared worker image and capture its digest, which is
+      # baked into the plan below so the image-based Lambdas reference an exact,
+      # already-published artifact (creates the ECR repo if missing).
+      - name: Build & push worker image
+        id: worker
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: ./modules/lambda/worker/push-image.sh staging "$AWS_REGION" >> "$GITHUB_OUTPUT"
 
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/staging/backend-staging.hcl
@@ -602,7 +588,7 @@ jobs:
       - name: Terraform Plan
         env:
           TF_VAR_db_password: ${{ secrets.STAGING_DB_PASSWORD }}
-        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/staging/staging.tfvars
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/staging/staging.tfvars -var="worker_image=${{ steps.worker.outputs.image_uri }}"
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -614,6 +600,16 @@ jobs:
 
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
+
+      - name: Roll worker Lambdas
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ./modules/lambda/worker/roll-functions.sh "$AWS_REGION" \
+            "${{ steps.worker.outputs.image_uri }}" \
+            "$(terraform output -raw lambda_receipt_worker_name)" \
+            "$(terraform output -raw lambda_release_worker_name)" \
+            "$(terraform output -raw lambda_email_worker_name)"
 
       # Build and push the API image AFTER apply so the ECR repository is
       # guaranteed to exist (Terraform creates/recreates it in the step above).
@@ -800,16 +796,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
-
-      - name: Zip Lambda Layer
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zip
-          zip -r receipt-layer.zip nodejs/
-        working-directory: infra/modules/lambda/layer
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -820,6 +806,14 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+
+      # Build & push the shared worker image and capture its digest, baked into
+      # the plan so the image-based Lambdas reference an exact published artifact.
+      - name: Build & push worker image
+        id: worker
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: ./modules/lambda/worker/push-image.sh prod "$AWS_REGION" >> "$GITHUB_OUTPUT"
 
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/prod/backend-prod.hcl
@@ -845,7 +839,7 @@ jobs:
       # Plan and apply the saved plan in the same job (same state, no drift
       # window): generate tfplan, then `terraform apply tfplan` — no -auto-approve.
       - name: Terraform Plan
-        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/prod/prod.tfvars
+        run: terraform plan ${{ steps.s3check.outputs.replace_flag }} -out=tfplan -input=false -var-file=envs/prod/prod.tfvars -var="worker_image=${{ steps.worker.outputs.image_uri }}"
 
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -857,6 +851,16 @@ jobs:
 
       - name: Terraform Apply (saved plan)
         run: terraform apply -input=false tfplan
+
+      - name: Roll worker Lambdas
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ./modules/lambda/worker/roll-functions.sh "$AWS_REGION" \
+            "${{ steps.worker.outputs.image_uri }}" \
+            "$(terraform output -raw lambda_receipt_worker_name)" \
+            "$(terraform output -raw lambda_release_worker_name)" \
+            "$(terraform output -raw lambda_email_worker_name)"
 
       # Build and push the API image AFTER apply so the ECR repository is
       # guaranteed to exist (Terraform creates/recreates it in the step above).
@@ -1046,23 +1050,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Pre-installs the Lambda Layer deps so archive_file zips a complete
-      # node_modules/ at apply time. This job runs a fresh `terraform apply`
-      # (plan+apply in one shot) on a clean checkout, where layer/ holds only
-      # package.json. Without this step the published layer is empty and the
-      # receipt-worker fails with "Cannot find module 'pg'". Mirrors the build
-      # steps in the PR-plan, staging, and prod jobs so every env deploys a
-      # complete layer.
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
-
-      - name: Zip Lambda Layer
-        run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq zip
-          zip -r receipt-layer.zip nodejs/
-        working-directory: infra/modules/lambda/layer
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -1072,10 +1059,26 @@ jobs:
         with:
           role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
+      # Build & push the worker image before apply so the image-based Lambdas
+      # reference an already-published artifact (creates the ECR repo if missing).
+      - name: Build & push worker image
+        id: worker
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: ./modules/lambda/worker/push-image.sh "${{ github.event.inputs.environment }}" "$AWS_REGION" >> "$GITHUB_OUTPUT"
       - name: Terraform Init
         run: terraform init -input=false -backend-config=envs/${{ github.event.inputs.environment }}/backend-${{ github.event.inputs.environment }}.hcl
       - name: Terraform Apply
-        run: terraform apply -auto-approve -input=false -var-file=envs/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}.tfvars
+        run: terraform apply -auto-approve -input=false -var-file=envs/${{ github.event.inputs.environment }}/${{ github.event.inputs.environment }}.tfvars -var="worker_image=${{ steps.worker.outputs.image_uri }}"
+      - name: Roll worker Lambdas
+        env:
+          AWS_REGION: ${{ vars.AWS_REGION }}
+        run: |
+          ./modules/lambda/worker/roll-functions.sh "$AWS_REGION" \
+            "${{ steps.worker.outputs.image_uri }}" \
+            "$(terraform output -raw lambda_receipt_worker_name)" \
+            "$(terraform output -raw lambda_release_worker_name)" \
+            "$(terraform output -raw lambda_email_worker_name)"
       - name: Deploy services to ECS
         env:
           AWS_REGION: ${{ vars.AWS_REGION }}

@@ -35,14 +35,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # Populate node_modules so archive_file hashes the same layer that was
-      # deployed. Without this, drift detection zips an empty layer/ on a fresh
-      # checkout and reports spurious drift on aws_lambda_layer_version.receipt
-      # every run, masking real drift.
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
-
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -136,14 +128,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-
-      # Populate node_modules so archive_file hashes the same layer that was
-      # deployed. Without this, drift detection zips an empty layer/ on a fresh
-      # checkout and reports spurious drift on aws_lambda_layer_version.receipt
-      # every run, masking real drift.
-      - name: Build Lambda Layer (pdf-lib + qrcode)
-        run: npm install --omit=dev
-        working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3

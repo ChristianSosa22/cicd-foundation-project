@@ -249,6 +249,9 @@ module "lambda" {
   project_name = var.project_name
   environment  = var.environment
 
+  # Shared worker container image (built & pushed to ECR by CI before apply).
+  worker_image = var.worker_image
+
   # IAM roles from the centralized IAM module
   receipt_role_arn = module.iam.async_receipt_role_arn
   release_role_arn = module.iam.async_release_role_arn

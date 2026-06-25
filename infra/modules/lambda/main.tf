@@ -6,9 +6,23 @@
 #      VPC-attached (needs RDS).
 #   3. email-worker: ReceiptReadyEvent → sends email via SES. OUTSIDE VPC (needs internet).
 #
-# The receipt-worker uses a Lambda Layer (pdf-lib + qrcode) for PDF generation.
-# All roles are sourced from the IAM module (no inline IAM).
-# Event source mappings connect SQS queues to Lambda consumers.
+# PACKAGING: all three workers share ONE container image (var.worker_image), built
+# and pushed to ECR by CI. Dependencies (pg, pdf-lib, qrcode) are baked into the
+# image at `docker build` time, so the function code that AWS runs is immutable and
+# content-addressed — it is structurally impossible to deploy a function missing its
+# dependencies. This replaces the previous zip + Lambda Layer approach, where
+# Terraform zipped whatever node_modules happened to be on the runner's disk and
+# could silently publish an empty layer (the "Cannot find module 'pg'" failures).
+#
+# Each function selects its handler from the shared image via image_config.command.
+# image_uri is set at create time from var.worker_image; subsequent rollouts are
+# driven by CI (`aws lambda update-function-code`) after pushing a new image, the
+# same way the ECS services roll onto new task definitions. ignore_changes keeps
+# Terraform from fighting those CI-driven image updates (and keeps drift-detection
+# from flagging them).
+#
+# All roles are sourced from the IAM module (no inline IAM). Event source mappings
+# connect SQS queues to Lambda consumers.
 #
 # TRADE-OFF (E4 policy relaxation): The receipt-worker reads users.email and
 # users.full_name from RDS and includes them in the ReceiptReadyEvent payload.
@@ -21,66 +35,21 @@ locals {
   prefix = "${var.project_name}-${var.environment}"
 }
 
-# ── Lambda Layer: pdf-lib + qrcode ─────────────────────────────────────────────
-# Built locally via null_resource. The layer zip contains node_modules with the
-# two dependencies. Rebuilt only when package.json changes (triggers on file hash).
-resource "null_resource" "build_receipt_layer" {
-  triggers = {
-    package_json = filemd5("${path.module}/layer/nodejs/package.json")
-  }
-
-  provisioner "local-exec" {
-    command = "npm install --prefix ${path.module}/layer/nodejs --omit=dev"
-  }
-}
-
-data "archive_file" "receipt_layer" {
-  type        = "zip"
-  source_dir  = "${path.module}/layer"
-  output_path = "${path.module}/layer/receipt-layer.zip"
-  excludes    = ["nodejs/node_modules/.cache", "receipt-layer.zip"]
-}
-
-resource "aws_lambda_layer_version" "receipt" {
-  layer_name          = "${local.prefix}-receipt-layer"
-  description         = "pdf-lib + qrcode for receipt PDF generation"
-  filename            = data.archive_file.receipt_layer.output_path
-  source_code_hash    = data.archive_file.receipt_layer.output_base64sha256
-  compatible_runtimes = ["nodejs20.x"]
-}
-
-# ── Zipped Handlers ───────────────────────────────────────────────────────────
-data "archive_file" "receipt" {
-  type        = "zip"
-  source_file = "${path.module}/handlers/receipt.js"
-  output_path = "${path.module}/handlers/receipt.zip"
-}
-
-data "archive_file" "release" {
-  type        = "zip"
-  source_file = "${path.module}/handlers/release.js"
-  output_path = "${path.module}/handlers/release.zip"
-}
-
-data "archive_file" "email" {
-  type        = "zip"
-  source_file = "${path.module}/handlers/email.js"
-  output_path = "${path.module}/handlers/email.zip"
-}
-
 # ── 1. receipt-worker ─────────────────────────────────────────────────────────
 # VPC-attached: needs access to RDS (for user/vehicle data) and VPC Endpoints
-# (SQS, SNS, SecretsManager, SSM, Logs). Generates receipt PDF using the Layer.
+# (SQS, SNS, SecretsManager, SSM, Logs). Generates receipt PDF using pdf-lib/qrcode
+# baked into the worker image.
 resource "aws_lambda_function" "receipt_worker" {
-  function_name    = "${local.prefix}-receipt-worker"
-  role             = var.receipt_role_arn
-  handler          = "receipt.handler"
-  runtime          = "nodejs20.x"
-  filename         = data.archive_file.receipt.output_path
-  source_code_hash = data.archive_file.receipt.output_base64sha256
-  timeout          = 60
-  memory_size      = 512
-  layers           = [aws_lambda_layer_version.receipt.arn]
+  function_name = "${local.prefix}-receipt-worker"
+  role          = var.receipt_role_arn
+  package_type  = "Image"
+  image_uri     = var.worker_image
+  timeout       = 60
+  memory_size   = 512
+
+  image_config {
+    command = ["receipt.handler"]
+  }
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -109,8 +78,10 @@ resource "aws_lambda_function" "receipt_worker" {
     Service     = "receipt-worker"
   }
 
+  # image_uri is rolled by CI (`aws lambda update-function-code`) after each push,
+  # mirroring the ECS task-definition rollout. Terraform sets it on create only.
   lifecycle {
-    ignore_changes = [source_code_hash]
+    ignore_changes = [image_uri]
   }
 }
 
@@ -139,15 +110,16 @@ resource "aws_lambda_event_source_mapping" "receipt" {
 # ── 2. release-worker ─────────────────────────────────────────────────────────
 # VPC-attached: needs access to RDS for UPDATE reservations.
 resource "aws_lambda_function" "release_worker" {
-  function_name    = "${local.prefix}-release-worker"
-  role             = var.release_role_arn
-  handler          = "release.handler"
-  runtime          = "nodejs20.x"
-  filename         = data.archive_file.release.output_path
-  source_code_hash = data.archive_file.release.output_base64sha256
-  timeout          = 30
-  memory_size      = 256
-  layers           = [aws_lambda_layer_version.receipt.arn]
+  function_name = "${local.prefix}-release-worker"
+  role          = var.release_role_arn
+  package_type  = "Image"
+  image_uri     = var.worker_image
+  timeout       = 30
+  memory_size   = 256
+
+  image_config {
+    command = ["release.handler"]
+  }
 
   vpc_config {
     subnet_ids         = var.subnet_ids
@@ -172,7 +144,7 @@ resource "aws_lambda_function" "release_worker" {
   }
 
   lifecycle {
-    ignore_changes = [source_code_hash]
+    ignore_changes = [image_uri]
   }
 }
 
@@ -204,14 +176,16 @@ resource "aws_lambda_event_source_mapping" "release" {
 # TRADE-OFF: Slightly relaxes E4 security policy by including user_email and
 # user_full_name in the SNS payload. Data travels encrypted within AWS only.
 resource "aws_lambda_function" "email_worker" {
-  function_name    = "${local.prefix}-email-worker"
-  role             = var.email_role_arn
-  handler          = "email.handler"
-  runtime          = "nodejs20.x"
-  filename         = data.archive_file.email.output_path
-  source_code_hash = data.archive_file.email.output_base64sha256
-  timeout          = 30
-  memory_size      = 128
+  function_name = "${local.prefix}-email-worker"
+  role          = var.email_role_arn
+  package_type  = "Image"
+  image_uri     = var.worker_image
+  timeout       = 30
+  memory_size   = 128
+
+  image_config {
+    command = ["email.handler"]
+  }
 
   environment {
     variables = {
@@ -228,7 +202,7 @@ resource "aws_lambda_function" "email_worker" {
   }
 
   lifecycle {
-    ignore_changes = [source_code_hash]
+    ignore_changes = [image_uri]
   }
 }
 

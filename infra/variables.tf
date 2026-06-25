@@ -138,6 +138,12 @@ variable "web_image_tag" {
   default     = "latest"
 }
 
+variable "worker_image" {
+  description = "Full ECR image URI (repo:tag or repo@digest) for the shared worker Lambda container image. Set by CI (infra/modules/lambda/worker/push-image.sh) before apply. The placeholder default lets `terraform validate` and drift detection run without building an image — the worker functions ignore_changes on image_uri, so the placeholder never causes drift on already-deployed functions."
+  type        = string
+  default     = "PLACEHOLDER_SET_BY_CI"
+}
+
 variable "api_cpu" {
   description = "CPU units for the API Fargate task. Valid values: 256, 512, 1024, 2048, 4096."
   type        = number

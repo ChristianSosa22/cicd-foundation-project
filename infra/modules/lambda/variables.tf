@@ -8,6 +8,13 @@ variable "environment" {
   type        = string
 }
 
+# ── Worker container image ───────────────────────────────────────────────────
+
+variable "worker_image" {
+  description = "Full ECR image URI (repo:tag or repo@digest) for the shared worker Lambda container image, built and pushed by CI. All three workers run this one image and select their handler via image_config.command. Used at create time only; rollouts are driven by CI via update-function-code (see ignore_changes on image_uri)."
+  type        = string
+}
+
 # ── IAM Role ARNs (from IAM module) ──────────────────────────────────────────
 
 variable "receipt_role_arn" {
