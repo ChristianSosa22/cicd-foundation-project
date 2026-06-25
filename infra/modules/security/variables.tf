@@ -53,3 +53,8 @@ variable "vpce_security_group_id" {
   description = "ID of the VPC Endpoints security group. Used by the lambda SG to allow egress to VPC Endpoints."
   type        = string
 }
+
+variable "region" {
+  description = "AWS region for S3 prefix list lookup."
+  type        = string
+}

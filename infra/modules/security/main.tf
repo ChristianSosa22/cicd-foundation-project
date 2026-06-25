@@ -206,6 +206,22 @@ resource "aws_security_group_rule" "lambda_egress_vpce" {
   description              = "Egress to VPC Endpoints (SQS, SNS, SecretsManager, SSM, Logs) on 443"
 }
 
+# S3 Gateway endpoint uses prefix lists, not security groups — Lambda needs explicit
+# egress to the regional S3 prefix list so receipt-worker can upload PDF receipts.
+data "aws_prefix_list" "s3" {
+  name = "com.amazonaws.${var.region}.s3"
+}
+
+resource "aws_security_group_rule" "lambda_egress_s3" {
+  type              = "egress"
+  security_group_id = aws_security_group.lambda.id
+  from_port         = var.https_port
+  to_port           = var.https_port
+  protocol          = "tcp"
+  prefix_list_ids   = [data.aws_prefix_list.s3.id]
+  description       = "Egress to S3 Gateway Endpoint via prefix list"
+}
+
 # DB SG: allow ingress from lambda SG (receipt/release workers need RDS)
 resource "aws_security_group_rule" "db_ingress_from_lambda" {
   type                     = "ingress"
