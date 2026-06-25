@@ -221,6 +221,18 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      # Build node_modules on THIS runner too, not just in the plan job. The
+      # saved plan downloads receipt-layer.zip as an artifact, but archive_file
+      # is a data source that re-zips layer/ as a side effect if Terraform reads
+      # it during apply. On this fresh checkout layer/nodejs has only
+      # package.json, so a re-read would overwrite the good zip with an empty one
+      # and publish a layer without 'pg'. Having node_modules on disk makes the
+      # layer correct whether or not archive_file re-runs — same guarantee the
+      # staging/prod jobs rely on.
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
