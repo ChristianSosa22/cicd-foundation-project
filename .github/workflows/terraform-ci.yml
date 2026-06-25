@@ -159,6 +159,18 @@ jobs:
           retention-days: 5
           if-no-files-found: error
 
+      # The layer zip is generated on-runner by archive_file during plan.
+      # deploy-dev runs on a fresh checkout and can't re-run archive_file
+      # (saved-plan apply skips data sources), so we pass the zip across
+      # as an artifact — same mechanism as tfplan.
+      - name: Upload Lambda layer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: receipt-layer-dev
+          path: infra/modules/lambda/layer/receipt-layer.zip
+          retention-days: 5
+          if-no-files-found: error
+
       - name: Post plan as PR comment
         uses: actions/github-script@v7
         continue-on-error: true
@@ -259,6 +271,17 @@ jobs:
         with:
           name: tfplan-dev
           path: infra
+          run-id: ${{ steps.planrun.outputs.run_id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Restore the layer zip from the plan run so that aws_lambda_layer_version.receipt
+      # can read it at apply time. archive_file does not re-run during a saved-plan apply,
+      # and the zip is gitignored, so we must pass it explicitly via artifact.
+      - name: Download Lambda layer artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: receipt-layer-dev
+          path: infra/modules/lambda/layer
           run-id: ${{ steps.planrun.outputs.run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
