@@ -151,11 +151,15 @@ jobs:
 
       # Promotes the exact plan to deploy-dev as a workflow artifact. deploy-dev
       # downloads this same tfplan and runs `terraform apply tfplan` — never a re-plan.
+      # The Lambda Layer zip is also uploaded because `terraform apply tfplan` still
+      # needs the physical zip to upload to AWS — it is NOT baked into the tfplan.
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-dev
-          path: infra/tfplan
+          path: |
+            infra/tfplan
+            infra/modules/lambda/layer/receipt-layer.zip
           retention-days: 5
           if-no-files-found: error
 
