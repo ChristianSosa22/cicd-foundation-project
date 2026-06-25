@@ -38,8 +38,6 @@ data "archive_file" "receipt_layer" {
   type        = "zip"
   source_dir  = "${path.module}/layer/nodejs"
   output_path = "${path.module}/layer/receipt-layer.zip"
-
-  depends_on = [null_resource.build_receipt_layer]
 }
 
 resource "aws_lambda_layer_version" "receipt" {
