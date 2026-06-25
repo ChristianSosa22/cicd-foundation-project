@@ -32,6 +32,7 @@ module "security" {
   web_port               = var.web_port
   db_port                = var.db_port
   vpce_security_group_id = module.network.vpce_security_group_id
+  region                 = var.region
 
   depends_on = [module.network]
 }
@@ -129,6 +130,28 @@ module "async_email" {
   message_retention_seconds     = var.email_message_retention_seconds
   max_receive_count             = var.max_receive_count
   dlq_message_retention_seconds = var.dlq_message_retention_seconds
+}
+
+# Resource-based policy so SNS can forward ReceiptReadyEvent messages to email-queue.
+# Without this, SNS publishes successfully but SQS silently drops the messages.
+resource "aws_sqs_queue_policy" "email_queue_allow_sns" {
+  queue_url = module.async_email.queue_url
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Principal = { Service = "sns.amazonaws.com" }
+      Action    = "sqs:SendMessage"
+      Resource  = module.async_email.queue_arn
+      Condition = {
+        ArnEquals = {
+          "aws:SourceArn" = module.iam.sns_topic_arn
+        }
+      }
+    }]
+  })
+
+  depends_on = [module.async_email, module.iam]
 }
 
 # ── SNS Topic: ReceiptReadyEvent (fan-out to email queue) ────────────────────
