@@ -7,28 +7,50 @@
 
 const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
 const { Pool } = require('pg');
+const dns = require('dns');
+const _origLookup = dns.lookup;
+let _rdsIpCached = null;
+dns.lookup = function (hostname, options, callback) {
+  if (hostname === process.env.DB_HOST || (typeof hostname === 'string' && hostname.endsWith('.amazonaws.com'))) {
+    if (hostname === process.env.DB_HOST && _rdsIpCached) {
+      if (typeof options === 'function') { options(null, _rdsIpCached, 4); return; }
+      if (callback) callback(null, _rdsIpCached, 4);
+      else return Promise.resolve({ address: _rdsIpCached, family: 4 });
+      return;
+    }
+    if (typeof options === 'function') { callback = options; options = {}; }
+    options = options || {};
+    options.family = 4;
+    return _origLookup.call(dns, hostname, options, (err, addr, family) => {
+      if (!err && hostname === process.env.DB_HOST) _rdsIpCached = addr;
+      if (typeof callback === 'function') callback(err, addr, family);
+    });
+  }
+  return _origLookup.apply(dns, arguments);
+};
 
-const pool = new Pool({
-  max: 2,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 5000,
-});
-
-let dbPassword = null;
+let pool = null;
 
 async function getDbPassword() {
-  if (dbPassword) return dbPassword;
   const sm = new SecretsManagerClient({ region: process.env.AWS_REGION });
   const res = await sm.send(new GetSecretValueCommand({ SecretId: process.env.DB_PASSWORD_SECRET_ARN }));
-  dbPassword = res.SecretString;
-  return dbPassword;
+  return res.SecretString;
 }
 
 async function getDbPool() {
-  if (pool.options.password) return pool;
+  if (pool) return pool;
   const password = await getDbPassword();
-  pool.options.password = password;
-  pool.options.connectionString = `postgres://${process.env.DB_USER}:${encodeURIComponent(password)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+  pool = new Pool({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password,
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  });
   return pool;
 }
 
@@ -46,8 +68,6 @@ exports.handler = async (event) => {
     try {
       const db = await getDbPool();
 
-      // Idempotent UPDATE: only affects rows matching the condition.
-      // Reprocessing the same message finds no matching rows — no effect.
       const updateResult = await db.query(
         `UPDATE reservations
          SET status = 'expirada', updated_at = NOW()
@@ -69,7 +89,6 @@ exports.handler = async (event) => {
         scan_before,
         stack: err.stack,
       }));
-      // Return as batch item failure so SQS retries
       results.push({ itemIdentifier: record.messageId });
       continue;
     }

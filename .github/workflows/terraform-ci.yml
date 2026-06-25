@@ -105,6 +105,12 @@ jobs:
         run: npm install --omit=dev
         working-directory: infra/modules/lambda/layer/nodejs
 
+      - name: Zip Lambda Layer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
+        working-directory: infra/modules/lambda/layer
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -152,11 +158,15 @@ jobs:
 
       # Promotes the exact plan to deploy-dev as a workflow artifact. deploy-dev
       # downloads this same tfplan and runs `terraform apply tfplan` — never a re-plan.
+      # The Lambda Layer zip is also uploaded because `terraform apply tfplan` still
+      # needs the physical zip to upload to AWS — it is NOT baked into the tfplan.
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
         with:
           name: tfplan-dev
-          path: infra/tfplan
+          path: |
+            infra/tfplan
+            infra/modules/lambda/layer/receipt-layer.zip
           retention-days: 5
           if-no-files-found: error
 
@@ -537,6 +547,12 @@ jobs:
         run: npm install --omit=dev
         working-directory: infra/modules/lambda/layer/nodejs
 
+      - name: Zip Lambda Layer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
+        working-directory: infra/modules/lambda/layer
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
@@ -775,6 +791,12 @@ jobs:
       - name: Build Lambda Layer (pdf-lib + qrcode)
         run: npm install --omit=dev
         working-directory: infra/modules/lambda/layer/nodejs
+
+      - name: Zip Lambda Layer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
+        working-directory: infra/modules/lambda/layer
 
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3

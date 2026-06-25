@@ -38,8 +38,6 @@ data "archive_file" "receipt_layer" {
   type        = "zip"
   source_dir  = "${path.module}/layer/nodejs"
   output_path = "${path.module}/layer/receipt-layer.zip"
-
-  depends_on = [null_resource.build_receipt_layer]
 }
 
 resource "aws_lambda_layer_version" "receipt" {
@@ -148,6 +146,7 @@ resource "aws_lambda_function" "release_worker" {
   source_code_hash = data.archive_file.release.output_base64sha256
   timeout          = 30
   memory_size      = 256
+  layers           = [aws_lambda_layer_version.receipt.arn]
 
   vpc_config {
     subnet_ids         = var.subnet_ids
