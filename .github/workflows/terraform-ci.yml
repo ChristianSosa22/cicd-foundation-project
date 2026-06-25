@@ -993,6 +993,10 @@ jobs:
   deploy-manual:
     if: github.event_name == 'workflow_dispatch'
     name: Deploy via Slack bot
+    # Gate the bot-triggered deploy on the same checks a PR must pass. This also
+    # serializes plan→apply so they don't fight over the same Terraform state
+    # lock (both run on a workflow_dispatch event, otherwise in parallel).
+    needs: [terraform-fmt, terraform-validate, plan]
     runs-on: ubuntu-latest
     environment: ${{ github.event.inputs.environment }}
     concurrency:
