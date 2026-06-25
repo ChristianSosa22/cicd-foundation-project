@@ -1033,6 +1033,24 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Pre-installs the Lambda Layer deps so archive_file zips a complete
+      # node_modules/ at apply time. This job runs a fresh `terraform apply`
+      # (plan+apply in one shot) on a clean checkout, where layer/ holds only
+      # package.json. Without this step the published layer is empty and the
+      # receipt-worker fails with "Cannot find module 'pg'". Mirrors the build
+      # steps in the PR-plan, staging, and prod jobs so every env deploys a
+      # complete layer.
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
+
+      - name: Zip Lambda Layer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
+        working-directory: infra/modules/lambda/layer
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
