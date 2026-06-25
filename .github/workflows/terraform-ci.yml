@@ -1033,6 +1033,23 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      # Build the Lambda Layer deps BEFORE Terraform runs. This job does a direct
+      # `terraform apply` (no saved plan, no artifact), so archive_file reads
+      # layer/ during the apply's plan phase. Without node_modules on disk first,
+      # it would package an EMPTY layer and the receipt-worker fails at runtime
+      # with "Cannot find module 'pg'". Same step staging/prod already run; makes
+      # the Slack/manual deploy path correct for dev, staging AND production.
+      - name: Build Lambda Layer (pdf-lib + qrcode)
+        run: npm install --omit=dev
+        working-directory: infra/modules/lambda/layer/nodejs
+
+      - name: Zip Lambda Layer
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
+        working-directory: infra/modules/lambda/layer
+
       - name: Set up Terraform
         uses: hashicorp/setup-terraform@v3
         with:
