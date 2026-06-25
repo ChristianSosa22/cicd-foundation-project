@@ -255,7 +255,7 @@ resource "aws_iam_role_policy" "async_receipt_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.this.account_id}:secret:${var.project_name}/*"
+      Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.this.account_id}:secret:/${var.project_name}/*"
     }]
   })
 }
@@ -371,7 +371,7 @@ resource "aws_iam_role_policy" "async_release_secrets" {
     Statement = [{
       Effect   = "Allow"
       Action   = ["secretsmanager:GetSecretValue"]
-      Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.this.account_id}:secret:${var.project_name}/*"
+      Resource = "arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.this.account_id}:secret:/${var.project_name}/*"
     }]
   })
 }

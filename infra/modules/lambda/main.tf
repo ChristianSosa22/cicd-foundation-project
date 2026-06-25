@@ -152,6 +152,7 @@ resource "aws_lambda_function" "release_worker" {
   source_code_hash = data.archive_file.release.output_base64sha256
   timeout          = 30
   memory_size      = 256
+  layers           = [aws_lambda_layer_version.receipt.arn]
 
   vpc_config {
     subnet_ids         = var.subnet_ids

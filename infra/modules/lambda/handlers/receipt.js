@@ -12,33 +12,53 @@ const { SNSClient, PublishCommand } = require('@aws-sdk/client-sns');
 const { SSMClient, GetParameterCommand } = require('@aws-sdk/client-ssm');
 const { Pool } = require('pg');
 const crypto = require('crypto');
+const dns = require('dns');
+const _origLookup = dns.lookup;
+let _rdsIpCached = null;
+dns.lookup = function (hostname, options, callback) {
+  if (hostname === process.env.DB_HOST || (typeof hostname === 'string' && hostname.endsWith('.amazonaws.com'))) {
+    if (hostname === process.env.DB_HOST && _rdsIpCached) {
+      if (typeof options === 'function') { options(null, _rdsIpCached, 4); return; }
+      if (callback) callback(null, _rdsIpCached, 4);
+      else return Promise.resolve({ address: _rdsIpCached, family: 4 });
+      return;
+    }
+    if (typeof options === 'function') { callback = options; options = {}; }
+    options = options || {};
+    options.family = 4;
+    return _origLookup.call(dns, hostname, options, (err, addr, family) => {
+      if (!err && hostname === process.env.DB_HOST) _rdsIpCached = addr;
+      if (typeof callback === 'function') callback(err, addr, family);
+    });
+  }
+  return _origLookup.apply(dns, arguments);
+};
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
 const QRCode = require('qrcode');
 
-const pool = new Pool({
-  connectionString: `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD_SECRET_ARN ? '' : ''}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`,
-  max: 2,
-  idleTimeoutMillis: 10000,
-  connectionTimeoutMillis: 5000,
-});
-
-// Override: fetch password from Secrets Manager at cold start
-let dbPassword = null;
+let pool = null;
 
 async function getDbPassword() {
-  if (dbPassword) return dbPassword;
   const { SecretsManagerClient, GetSecretValueCommand } = require('@aws-sdk/client-secrets-manager');
   const sm = new SecretsManagerClient({ region: process.env.AWS_REGION });
   const res = await sm.send(new GetSecretValueCommand({ SecretId: process.env.DB_PASSWORD_SECRET_ARN }));
-  dbPassword = res.SecretString;
-  return dbPassword;
+  return res.SecretString;
 }
 
 async function getDbPool() {
-  if (pool.options.password) return pool;
+  if (pool) return pool;
   const password = await getDbPassword();
-  pool.options.password = password;
-  pool.options.connectionString = `postgres://${process.env.DB_USER}:${encodeURIComponent(password)}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+  pool = new Pool({
+    host: process.env.DB_HOST,
+    port: parseInt(process.env.DB_PORT, 10),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password,
+    ssl: { rejectUnauthorized: false },
+    max: 2,
+    idleTimeoutMillis: 10000,
+    connectionTimeoutMillis: 5000,
+  });
   return pool;
 }
 
@@ -125,25 +145,23 @@ exports.handler = async (event) => {
         continue;
       }
 
-      // Fetch all needed data in parallel
-      const [resResult, userResult, spaceResult, vehicleResult] = await Promise.all([
-        db.query(
-          'SELECT id, user_id, space_id, vehicle_id, reservation_date FROM reservations WHERE id = $1',
-          [reservation_id],
-        ),
-        db.query(
-          'SELECT id, full_name, email FROM users WHERE id = $1',
-          [payload.data.user_id],
-        ),
-        db.query(
-          'SELECT id, label, vehicle_type FROM parking_spaces WHERE id = $1',
-          [payload.data.space_id],
-        ),
-        db.query(
-          'SELECT id, plate_enc, vehicle_type FROM vehicles WHERE id = $1',
-          [payload.data.vehicle_id],
-        ),
-      ]);
+      // Fetch all needed data sequentially (single Client, avoid pg deprecation)
+      const resResult = await db.query(
+        'SELECT id, user_id, space_id, vehicle_id, reservation_date FROM reservations WHERE id = $1',
+        [reservation_id],
+      );
+      const userResult = await db.query(
+        'SELECT id, full_name, email FROM users WHERE id = $1',
+        [payload.data.user_id],
+      );
+      const spaceResult = await db.query(
+        'SELECT id, label, vehicle_type FROM parking_spaces WHERE id = $1',
+        [payload.data.space_id],
+      );
+      const vehicleResult = await db.query(
+        'SELECT id, plate_enc, vehicle_type FROM vehicles WHERE id = $1',
+        [payload.data.vehicle_id],
+      );
 
       const reservation = resResult.rows[0];
       const user = userResult.rows[0];
@@ -211,7 +229,7 @@ exports.handler = async (event) => {
         status: 'completed',
       }));
     } catch (err) {
-      console.error(JSON.stringify({ error: err.message, reservation_id, stack: err.stack }));
+      console.error(JSON.stringify({ error: err.message, errors: err.errors && err.errors.map(e => e.message), reservation_id, stack: err.stack?.substring(0, 500) }));
       // Return as batch item failure so SQS retries
       results.push({ itemIdentifier: record.messageId });
       continue;
