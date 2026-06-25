@@ -106,7 +106,9 @@ jobs:
         working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Zip Lambda Layer
-        run: tar -cf receipt-layer.zip --format=zip -C nodejs .
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
         working-directory: infra/modules/lambda/layer
 
       - name: Set up Terraform
@@ -546,7 +548,9 @@ jobs:
         working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Zip Lambda Layer
-        run: tar -cf receipt-layer.zip --format=zip -C nodejs .
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
         working-directory: infra/modules/lambda/layer
 
       - name: Set up Terraform
@@ -789,7 +793,9 @@ jobs:
         working-directory: infra/modules/lambda/layer/nodejs
 
       - name: Zip Lambda Layer
-        run: tar -cf receipt-layer.zip --format=zip -C nodejs .
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq zip
+          zip -r receipt-layer.zip nodejs/
         working-directory: infra/modules/lambda/layer
 
       - name: Set up Terraform
