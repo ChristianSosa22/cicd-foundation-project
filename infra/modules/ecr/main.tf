@@ -2,6 +2,7 @@
 resource "aws_ecr_repository" "api" {
   name                 = "${var.name}-${var.environment}-api"
   image_tag_mutability = var.image_tag_mutability
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
@@ -23,6 +24,7 @@ resource "aws_ecr_repository" "api" {
 resource "aws_ecr_repository" "web" {
   name                 = "${var.name}-${var.environment}-web"
   image_tag_mutability = var.image_tag_mutability
+  force_delete         = true
 
   image_scanning_configuration {
     scan_on_push = true
