@@ -468,6 +468,7 @@ jobs:
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           PREFIX="${CLUSTER%-cluster}"
+
           for SVC in api web worker; do
             echo "Deploying $PREFIX-$SVC-svc ..."
             aws ecs update-service \
@@ -476,8 +477,35 @@ jobs:
               --task-definition "$PREFIX-$SVC" \
               --force-new-deployment >/dev/null
           done
+
+          # On a stabilization failure, dump WHY the service is unhealthy instead
+          # of failing with an opaque "Max attempts exceeded": recent service
+          # events plus the stop reason / container exit code of recently stopped
+          # tasks. This turns a blind 10-minute hang into an actionable report.
+          diagnose() {
+            SVC="$1"
+            echo "::group::Diagnostics for $PREFIX-$SVC-svc"
+            echo "--- Recent service events ---"
+            aws ecs describe-services --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc" \
+              --query 'services[0].events[:12].[createdAt,message]' --output text || true
+            STOPPED=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$PREFIX-$SVC-svc" \
+              --desired-status STOPPED --query 'taskArns' --output text || true)
+            if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+              echo "--- Recently stopped tasks (stop reason / container exit) ---"
+              aws ecs describe-tasks --cluster "$CLUSTER" --tasks $STOPPED \
+                --query 'tasks[].{stoppedReason:stoppedReason,container:containers[0].reason,exitCode:containers[0].exitCode}' \
+                --output table || true
+            fi
+            echo "::endgroup::"
+          }
+
           for SVC in api web worker; do
-            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+            echo "Waiting for $PREFIX-$SVC-svc to stabilize..."
+            if ! aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"; then
+              echo "::error::$PREFIX-$SVC-svc did not reach a steady state in time."
+              diagnose "$SVC"
+              exit 1
+            fi
           done
           echo "All services rolled onto latest task definitions."
 
@@ -679,6 +707,7 @@ jobs:
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           PREFIX="${CLUSTER%-cluster}"
+
           for SVC in api web worker; do
             echo "Deploying $PREFIX-$SVC-svc ..."
             aws ecs update-service \
@@ -687,8 +716,35 @@ jobs:
               --task-definition "$PREFIX-$SVC" \
               --force-new-deployment >/dev/null
           done
+
+          # On a stabilization failure, dump WHY the service is unhealthy instead
+          # of failing with an opaque "Max attempts exceeded": recent service
+          # events plus the stop reason / container exit code of recently stopped
+          # tasks. This turns a blind 10-minute hang into an actionable report.
+          diagnose() {
+            SVC="$1"
+            echo "::group::Diagnostics for $PREFIX-$SVC-svc"
+            echo "--- Recent service events ---"
+            aws ecs describe-services --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc" \
+              --query 'services[0].events[:12].[createdAt,message]' --output text || true
+            STOPPED=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$PREFIX-$SVC-svc" \
+              --desired-status STOPPED --query 'taskArns' --output text || true)
+            if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+              echo "--- Recently stopped tasks (stop reason / container exit) ---"
+              aws ecs describe-tasks --cluster "$CLUSTER" --tasks $STOPPED \
+                --query 'tasks[].{stoppedReason:stoppedReason,container:containers[0].reason,exitCode:containers[0].exitCode}' \
+                --output table || true
+            fi
+            echo "::endgroup::"
+          }
+
           for SVC in api web worker; do
-            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+            echo "Waiting for $PREFIX-$SVC-svc to stabilize..."
+            if ! aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"; then
+              echo "::error::$PREFIX-$SVC-svc did not reach a steady state in time."
+              diagnose "$SVC"
+              exit 1
+            fi
           done
           echo "All services rolled onto latest task definitions."
 
@@ -888,6 +944,7 @@ jobs:
         run: |
           CLUSTER=$(terraform output -raw ecs_cluster_name)
           PREFIX="${CLUSTER%-cluster}"
+
           for SVC in api web worker; do
             echo "Deploying $PREFIX-$SVC-svc ..."
             aws ecs update-service \
@@ -896,8 +953,35 @@ jobs:
               --task-definition "$PREFIX-$SVC" \
               --force-new-deployment >/dev/null
           done
+
+          # On a stabilization failure, dump WHY the service is unhealthy instead
+          # of failing with an opaque "Max attempts exceeded": recent service
+          # events plus the stop reason / container exit code of recently stopped
+          # tasks. This turns a blind 10-minute hang into an actionable report.
+          diagnose() {
+            SVC="$1"
+            echo "::group::Diagnostics for $PREFIX-$SVC-svc"
+            echo "--- Recent service events ---"
+            aws ecs describe-services --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc" \
+              --query 'services[0].events[:12].[createdAt,message]' --output text || true
+            STOPPED=$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$PREFIX-$SVC-svc" \
+              --desired-status STOPPED --query 'taskArns' --output text || true)
+            if [ -n "$STOPPED" ] && [ "$STOPPED" != "None" ]; then
+              echo "--- Recently stopped tasks (stop reason / container exit) ---"
+              aws ecs describe-tasks --cluster "$CLUSTER" --tasks $STOPPED \
+                --query 'tasks[].{stoppedReason:stoppedReason,container:containers[0].reason,exitCode:containers[0].exitCode}' \
+                --output table || true
+            fi
+            echo "::endgroup::"
+          }
+
           for SVC in api web worker; do
-            aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"
+            echo "Waiting for $PREFIX-$SVC-svc to stabilize..."
+            if ! aws ecs wait services-stable --cluster "$CLUSTER" --services "$PREFIX-$SVC-svc"; then
+              echo "::error::$PREFIX-$SVC-svc did not reach a steady state in time."
+              diagnose "$SVC"
+              exit 1
+            fi
           done
           echo "All services rolled onto latest task definitions."
 

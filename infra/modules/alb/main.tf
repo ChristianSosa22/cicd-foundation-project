@@ -22,6 +22,12 @@ resource "aws_lb_target_group" "api" {
   vpc_id      = var.vpc_id
   target_type = "ip"
 
+  # Stateless JSON API with short-lived requests. The default 300s drain makes
+  # every rolling deploy hold the old task for 5 minutes, pushing the rollout
+  # past the CI `wait services-stable` timeout. 30s is ample for in-flight
+  # requests to finish.
+  deregistration_delay = 30
+
   health_check {
     enabled             = true
     path                = var.api_health_check_path
@@ -46,6 +52,10 @@ resource "aws_lb_target_group" "web" {
   protocol    = "HTTP"
   vpc_id      = var.vpc_id
   target_type = "ip"
+
+  # Stateless frontend; same reasoning as the API target group above. Shrink the
+  # connection-draining window so deploys converge well within the CI wait.
+  deregistration_delay = 30
 
   health_check {
     enabled  = true
