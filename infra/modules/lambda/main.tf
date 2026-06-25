@@ -34,12 +34,6 @@ resource "null_resource" "build_receipt_layer" {
   }
 }
 
-# NOTE: no `depends_on` on null_resource.build_receipt_layer here. A data source
-# with depends_on on a not-yet-created resource is deferred to apply, so the zip
-# would NOT be written during `terraform plan` — breaking the "Upload Lambda
-# layer artifact" step (it uploads the zip produced at plan time). CI pre-installs
-# node_modules (workflow "Build Lambda Layer" step) before plan, so archive_file
-# reads a complete tree and writes the zip during plan as required.
 data "archive_file" "receipt_layer" {
   type        = "zip"
   source_dir  = "${path.module}/layer/nodejs"
