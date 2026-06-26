@@ -53,7 +53,6 @@ jobs:
       - name: Terraform Format
         run: terraform fmt -check -recursive
 
-  # Check 2 — schema/syntax validation. No AWS creds; backend init skipped.
   terraform-validate:
     if: github.event.action != 'closed'
     name: terraform validate
