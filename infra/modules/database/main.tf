@@ -50,8 +50,9 @@ resource "aws_db_instance" "default" {
   vpc_security_group_ids = [var.db_security_group_id]
   parameter_group_name   = aws_db_parameter_group.default.name
 
-  skip_final_snapshot = var.skip_final_snapshot
-  deletion_protection = var.deletion_protection
+  skip_final_snapshot       = var.skip_final_snapshot
+  final_snapshot_identifier = "${var.project_name}-${var.environment}-db-final-snapshot"
+  deletion_protection       = var.deletion_protection
 
   lifecycle {
     ignore_changes = [password]
