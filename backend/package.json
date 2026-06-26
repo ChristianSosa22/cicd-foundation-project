@@ -15,6 +15,7 @@
     "db:push": "drizzle-kit push",
     "db:apply-sql": "psql \"$DATABASE_URL\" -f sql/schema.sql",
     "db:seed": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 --no-psqlrc -f sql/seed.sql",
+    "db:seed:init": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 --no-psqlrc -f sql/seed-if-empty.sql",
     "seed:test": "node dist/scripts/seed-test-data.js",
     "db:init": "psql \"$DATABASE_URL\" -v ON_ERROR_STOP=1 --no-psqlrc -f sql/schema.sql -f sql/seed.sql",
     "lint": "eslint .",
