@@ -53,6 +53,10 @@ resource "aws_db_instance" "default" {
   skip_final_snapshot = var.skip_final_snapshot
   deletion_protection = var.deletion_protection
 
+  lifecycle {
+    ignore_changes = [password]
+  }
+
   tags = {
     Name        = "${var.project_name}-${var.environment}-db"
     Environment = var.environment
