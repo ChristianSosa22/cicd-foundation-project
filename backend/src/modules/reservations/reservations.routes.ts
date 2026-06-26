@@ -173,11 +173,27 @@ reservationsRouter.get('/:id', validate({ params: idParam }), async (req, res, n
     const [vehicle] = await db.select({ plateEnc: vehicles.plateEnc, vehicleType: vehicles.vehicleType }).from(vehicles).where(eq(vehicles.id, reservation.vehicleId)).limit(1);
     const [owner] = await db.select({ category: users.category }).from(users).where(eq(users.id, reservation.userId)).limit(1);
 
+    // Time-derived fields computed from confirm_deadline (additive, server-side).
+    const now = Date.now();
+    const deadlineMs = reservation.confirmDeadline.getTime();
+    const isExpired =
+      reservation.status === 'expirada' ||
+      (reservation.status === 'reservada' && now > deadlineMs);
+    // Never negative: clamp at 0. ceil so any time left reads as >= 1 minute.
+    const remainingMinutes = Math.max(0, Math.ceil((deadlineMs - now) / 60000));
+
+    logger.info(
+      { reservation_id: reservation.id, status: reservation.status, is_expired: isExpired, remaining_minutes: remainingMinutes },
+      '[reservations:get] computed time-derived fields',
+    );
+
     res.json({
       ...mapReservation(reservation as unknown as Record<string, unknown>),
       space: space ? { label: space.label, vehicle_type: space.vehicleType } : null,
       vehicle: vehicle ? { plate: decrypt(vehicle.plateEnc), vehicle_type: vehicle.vehicleType } : null,
       user_category: owner?.category ?? null,
+      is_expired: isExpired,
+      remaining_minutes: remainingMinutes,
     });
   } catch (err) {
     next(err);
