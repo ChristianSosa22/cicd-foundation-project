@@ -1,4 +1,4 @@
-export type Environment = 'local' | 'dev' | 'prod';
+export type Environment = 'local' | 'dev' | 'staging' | 'prod';
 
 export interface EnvironmentConfig {
   name: Environment;
@@ -16,6 +16,10 @@ export function getEnvironmentConfig(): EnvironmentConfig {
     dev: {
       name: 'dev',
       baseUrl: process.env.DEV_BASE_URL ?? '',
+    },
+    staging: {
+      name: 'staging',
+      baseUrl: process.env.STAGING_BASE_URL ?? '',
     },
     prod: {
       name: 'prod',

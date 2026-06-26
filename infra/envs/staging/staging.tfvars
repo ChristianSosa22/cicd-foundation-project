@@ -52,3 +52,10 @@ email_message_retention_seconds    = 604800  # 7 days
 schedule_expression      = "rate(20 minutes)"
 scheduler_timezone       = "America/Guatemala"
 scheduler_target_message = "{\"event_type\":\"ReleaseExpiredReservationCommand\",\"data\":{}}"
+
+# ── TLS / HTTPS (Deliverable D) ───────────────────────────────────────────────
+enable_tls       = true
+domain_name      = "app-staging.grupo5.oyd.solid.com.gt"
+hosted_zone_name = "grupo5.oyd.solid.com.gt"
+app_fqdn         = "app-staging.grupo5.oyd.solid.com.gt"
+ssl_policy       = "ELBSecurityPolicy-TLS13-1-2-2021-06"
