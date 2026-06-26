@@ -87,4 +87,4 @@ jobs:
         run: 'echo "Destroying: ${{ inputs.environment }}"'
 
       - name: Terraform Destroy
-        run: terraform destroy -auto-approve -input=false -var-file=envs/${{ inputs.environment }}/${{ inputs.environment }}.tfvars
+        run: terraform destroy -auto-approve -input=false -var-file=envs/${{ inputs.environment }}/${{ inputs.environment }}.tfvars -var deletion_protection=false -var skip_final_snapshot=true
